@@ -140,16 +140,29 @@ graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name) {
   #                for the y-axis data.
   #
   # Returns:
-  #   A heat map of a variable of interest at a given location.
+  #   A bar graph of a daily number of citations for a given month.
   # Error handling (rudimentary)
-  
-  
-  
-  e <- ggplot(my_data, aes_string(x = x_axis_name, y = y_axis_name)) +
+  if (is.data.frame(my_data) == FALSE) {
+    stop("Argument my_data is of incorrect data type: ", str(my_data), ".")
+  }
+  if (is.character(plot_title) == FALSE) {
+    stop("Argument plot_title is of incorrect data type:", str(plot_title),
+         ".")
+  }
+  if (is.character(x_axis_name) == FALSE) {
+    stop("Argument x_axis_name is of incorrect data type:", str(x_axis_name),
+         ".")
+  }
+  if (is.character(y_axis_name) == FALSE) {
+    stop("Argument y_axis_name is of incorrect data type:", str(y_axis_name),
+         ".")
+  }
+  # e <-
+  ggplot(my_data, aes_string(x = x_axis_name, y = y_axis_name)) +
     geom_bar(color = "red", fill = "red", stat = "identity") + 
     theme(axis.text.x = element_text(hjust = 1),
           plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
     ggtitle(plot_title) +
     labs(x = 'Month and Day', y = "# of Citations")
-  print(e)
+  #print(e)
 }
