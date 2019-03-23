@@ -5,11 +5,12 @@ date: "March 22, 2019"
 output: html_document
 ---
 
+# Import Libraries
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 x <- c("dplyr", "magrittr", "stringr", "stringi", "lubridate", "ggplot2",
        "scales", "proj4", "maps", "ggmap", "tidyr", "data.table", "gridExtra")
-invisible(lapply(x, library, character.only = TRUE))
+lapply(x, library, character.only = TRUE)
 source("Custom Created Functions.R")
 rm(x)
 ```
@@ -17,6 +18,10 @@ rm(x)
 # Introduction - Import and Subsetting
 
 ```{r, message = FALSE, warning = FALSE}
+# The Raw Citations Data can be found at
+# https://www.kaggle.com/cityofLA/los-angeles-parking-citations. The data is 
+# constantly updated and me be larger than the file I used at the time of this
+# project.
 raw_data <- fread("Raw Citations Data.csv", sep = ",")
 # Remove non-useful columns (for this particular project analysis).
 clean_data <- raw_data %>%
@@ -25,17 +30,14 @@ clean_data <- raw_data %>%
   rename(Issue_Date = `Issue Date`, Issue_Time = `Issue time`,
          Violation_Code = `Violation code`, Fine_Amount = `Fine amount`,
          Violation_Description = `Violation Description`)
-# Tickets are unique, no duplicates. Assume for simplicity that this means 
-# that no vehicle was cited more than once in a given instance. 
-# length(unique(raw_data$`Ticket number`)) == nrow(raw_data)
 ```
 
-# Initial Analysis
+# Assumptions Going Forward
 
 ```{r}
 # Tickets are unique, no duplicates. Assume for simplicity that this means 
 # that no vehicle was cited more than once in a given instance. 
-length(unique(raw_data$`Ticket number`)) == nrow(raw_data)
+length(unique(clean_data$`Ticket number`)) == nrow(clean_data)
 ```
 
 # Issue Date Cleaning
@@ -68,12 +70,12 @@ clean_data$Issue_Time <- as.character(clean_data$Issue_Time) %>%
 # New column that stores the date and time.
 clean_data$Issue_DT <- apply(clean_data[, c('Issue_Date','Issue_Time')], 1,
                              paste, collapse = " ") %>%
-  # Some values in the raw data were missing Issue Time (NA), so were quieted
-  # to not show in output.
+# Some values in the raw data were missing Issue Time (NA), so were quieted to
+# not show in output.
   ymd_hm(., quiet = TRUE)
 # Change timezone from UTC.
 tz(clean_data$Issue_DT) <- 'America/Los_Angeles'
-# Now remove unnecessary columnss.
+# Now remove unnecessary columns.
 clean_data <- clean_data %>%
   select(-c(Issue_Time, Issue_Date))
 ```
@@ -115,18 +117,28 @@ projections <- project(coord_data[, c("Latitude", "Longitude")], proj4string,
 new_coords <- data.frame(latitude = projections$y, longitude = projections$x)
 coord_data$New_Latitude <- new_coords$latitude
 coord_data$New_Longitude <- new_coords$longitude
-# Can't plot all the data, so sampled from it.
 cit_coords <- coord_data %>%
   group_by(New_Latitude, New_Longitude) %>%
   summarise(Frequency = n()) %>%
   rename(lat = New_Latitude, long = New_Longitude)
 ```
 
+# Highest Average Fines by Area
+
+```{r}
+fines_area <- coord_data %>%
+  select("Fine_Amount", "Latitude", "Longitude")  
+avg_area_fines <- fines_area %>%
+  group_by(Latitude, Longitude) %>%
+  summarise(Avg_Fine = mean(Fine_Amount))
+```
+
 # Write Excel Spreadsheets
 
 ```{r}
 fwrite(clean_data, "Cleaned Data.csv")
-fwrite(cit_coords, "Coordinates to Plot.csv")
+fwrite(cit_coords, "Citations by Location.csv")
+fwrite(avg_area_fines, "Average Fine by Location.csv")
 ```
 
 # Extra Code
