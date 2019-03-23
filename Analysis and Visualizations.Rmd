@@ -5,10 +5,22 @@ date: "March 22, 2019"
 output: html_document
 ---
 
+# What are we interested in?
+
+# The Data
+
+```{r}
+clean_data <- fread("Cleaned Data.csv", sep = ",")
+cit_coords <- fread("Citations by Location.csv", sep = ",")
+avg_area_fines <- fread("Average Fine by Location.csv", sep = ",")
+```
+
+# Lets Look at Some Heatmaps!
+
 ```{r}
 # Set Google API Key for map calls. The below is a fake key to protect my key.
 # Additionally, some enabling of geocoding on GoogleAPIs account is necessary.
-register_google(key = "AIzaSyAU1V0uEmoG3Pz3tVXAqYMEjsaGusIfMLQ")
+register_google(key = "Your Key Here")
 # Look at all of Los Angeles first.
 la <- get_map(location = "los angeles", zoom = 10)
 ggmap(la) +
@@ -34,9 +46,7 @@ make_map(cit_coords, "lat", "long", dt_lat_lims, dt_long_lims, 15L)
 make_map(cit_coords, "lat", "long", sm_lat_lims, sm_long_lims, 14L)
 ```
 
-# Analyses
-
-## Average Fine Depending on Car Summary Statistics
+# Average Fine Depending on Car Summary Statistics
 
 ```{r}
 make_avg_fines <- clean_data %>%
@@ -67,7 +77,7 @@ make_com_cits <- clean_data %>%
   summarise(Make_Cit_Type = names(which.max(table(Violation_Description))))
 ```
 
-## Tickets by Month
+# Tickets by Month
 
 ```{r}
 tot_cits_month <- clean_data %>%
