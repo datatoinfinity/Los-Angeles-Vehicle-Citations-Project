@@ -1,6 +1,6 @@
 # Functions for LA Vehicle Citations Project
 
-correct_time <- function(my_data,column, column_name) {
+correct_time <- function(my_data, column, column_name) {
   # Corrects improperly formatted military time (19 for 12:19 AM, 1345 for 1:45
   # PM, etc.) to format that includes appropriate 0s (19 to 00:19, 13:45, etc.)
   #
@@ -8,7 +8,7 @@ correct_time <- function(my_data,column, column_name) {
   #   my_data: A data_frame with a column that is improperly formatted military
   #            time.
   #   column: A character column of improperly formatted military times.
-  #   wrong_time: The string name of column that is improperly formatted. 
+  #   column_name: The string name of column that is improperly formatted. 
   #
   # Returns:
   #   A vector of characters of reformatted military times.
@@ -44,7 +44,7 @@ correct_time <- function(my_data,column, column_name) {
       x <- x
     }
   })
-  output
+  return(output)
 }
 
 make_map <- function(my_data, lat_col_name, long_col_name, lat_lims,
