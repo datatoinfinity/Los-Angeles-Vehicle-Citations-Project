@@ -22,8 +22,15 @@ avg_area_fines <- fread("Average Fine by Location.csv", sep = ",")
 tot_cits_month <- clean_data %>%
   group_by(Month) %>%
   summarise(Total_Month_Cits = n()) %>%
-  # Some entires were missing the an issue date.
-  filter(!is.na(Month))
+  # Removed some entires that were missing an issue date.
+  filter(Month != "")
+# Reorder the order of the months.
+tot_cits_month$Month <- factor(tot_cits_month$Month, levels = c("Jan", "Feb",
+                                                                "Mar", "Apr",
+                                                                "May", "Jun",
+                                                                "Jul", "Aug",
+                                                                "Sep", "Oct",
+                                                                "Nov", "Dec"))
 graph_cits(tot_cits_month, "Citations for 2018", "Month", "Total_Month_Cits")
 ```
 
