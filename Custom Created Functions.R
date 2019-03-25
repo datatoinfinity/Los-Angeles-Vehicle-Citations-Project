@@ -41,10 +41,10 @@ correct_time <- function(my_data, column, column_name) {
       }
     } else {
       # To keep NA values from turning into NULL.
-      x <- x
+        x <- x
     }
   })
-  return(output)
+  output
 }
 
 make_map <- function(my_data, lat_col_name, long_col_name, lat_lims,
