@@ -10,71 +10,10 @@ output: html_document
 # The Data
 
 ```{r}
+source("Custom Created Functions.R")
 clean_data <- fread("Cleaned Data.csv", sep = ",")
 cit_coords <- fread("Citations by Location.csv", sep = ",")
 avg_area_fines <- fread("Average Fine by Location.csv", sep = ",")
-```
-
-# Lets Look at Some Heatmaps!
-
-```{r}
-# Set Google API Key for map calls. The below is a fake key to protect my key.
-# Additionally, some enabling of geocoding on GoogleAPIs account is necessary.
-register_google(key = "Your Key Here")
-# Look at all of Los Angeles first.
-la <- get_map(location = "los angeles", zoom = 10)
-ggmap(la) +
-  stat_density2d(data = cit_coords, aes(x = long, y = lat, fill = ..level..,
-                                        alpha = ..level..),
-                 geom = "polygon", size = 0.01, bins = 16) +
-  scale_fill_gradient(low = "black", high = "red") +
-  scale_alpha(range = c(0, 0.3), guide = FALSE)
-
-# Check out Downtown.
-dt_lat_lims <- c(34.03, 34.07)
-dt_long_lims <- c(-118.3, -118.21)
-# Check out UCLA / Westwood area.
-ucla_lat_lims <- c(34.0, 34.1)
-ucla_long_lims <- c(-118.47, -118.4)
-# Check out Santa Monica.
-sm_lat_lims <- c(33.95, 34.05)
-sm_long_lims <- c(-118.53, -118.44)
-# Warning that rows were removed are tickets outside the limits of the map.
-# State the limitations of this map
-make_map(cit_coords, "lat", "long", ucla_lat_lims, ucla_long_lims, 14L)
-make_map(cit_coords, "lat", "long", dt_lat_lims, dt_long_lims, 15L)
-make_map(cit_coords, "lat", "long", sm_lat_lims, sm_long_lims, 14L)
-```
-
-# Average Fine Depending on Car Summary Statistics
-
-```{r}
-make_avg_fines <- clean_data %>%
-  group_by(Make) %>%
-  summarise(Avg_Make_Fine = mean(Fine_Amount, na.rm = TRUE)) %>%
-  # Some citations did not include vehicle make, so removed now.
-  filter(!(Make == "")) %>%
-  arrange(desc(Avg_Make_Fine))
-```
-
-## Violation Code / Description Discussion
-
-```{r}
-length(unique(clean_data$Violation_Code))
-length(unique(clean_data$Violation_Description))
-```
-
-We can see that there are fewer Violation Codes than Violation Descriptions,
-indicating that different Violation Descriptions are being classified with the
-same code. However, when inspecting the data, it appears there are many
-different spellings for an individual Violation Description.
-
-## Most Common Citation Descriptions by Make
-
-```{r}
-make_com_cits <- clean_data %>%
-  group_by(Make) %>%
-  summarise(Make_Cit_Type = names(which.max(table(Violation_Description))))
 ```
 
 # Tickets by Month
@@ -127,4 +66,84 @@ sept_cits <- subset(cits_by_day, (Date >= cutoffs_2[1] &
                                   Date <= cutoffs_2[2]))
 graph_cits(sept_cits, "Citations for September 2018", "Date", "Tot_Day_Cits")
 graph_cits(april_cits, "Citations for April 2018", "Date", "Tot_Day_Cits")
+```
+
+# Lets Look at Some Heatmaps!
+
+```{r}
+# Set Google API Key for map calls. The below is a fake key to protect my key.
+# Additionally, some enabling of geocoding on GoogleAPIs account is necessary.
+
+# Use this line of code for registering the API key for google cloud:
+# register_google(key = "Your Key Here")
+
+# Look at all of Los Angeles first.
+la <- get_map(location = "los angeles", zoom = 10)
+ggmap(la) +
+  stat_density2d(data = cit_coords, aes(x = long, y = lat, fill = ..level..,
+                                        alpha = ..level..),
+                 geom = "polygon", size = 0.01, bins = 16) +
+  scale_fill_gradient(low = "black", high = "red") +
+  scale_alpha(range = c(0, 0.3), guide = FALSE)
+```
+
+## Let's Look at Downtown LA More Closely
+
+```{r}
+# Note, the concentration and gradients for the zoomed in maps reflect only
+# the citations that are located in that new map. Warning that rows are
+# removed are tickets outside the limits of the map.
+# Limits for the zoomed in for Downtown LA.
+dt_lat_lims <- c(34.03, 34.07)
+dt_long_lims <- c(-118.3, -118.21)
+make_map(cit_coords, "lat", "long", dt_lat_lims, dt_long_lims, 15L)
+```
+
+## Let's Look at the UCLA/Westwood Area More Closely
+
+```{r}
+# Limits for the zoomed in for UCLA/Westwood Area.
+ucla_lat_lims <- c(34.0, 34.1)
+ucla_long_lims <- c(-118.47, -118.4)
+make_map(cit_coords, "lat", "long", ucla_lat_lims, ucla_long_lims, 14L)
+```
+
+## Let's Look at Santa Monica/Venice More Closely
+
+```{r}
+# Limits for the zoomed in for Santa Monica/Venice.
+sm_lat_lims <- c(33.95, 34.05)
+sm_long_lims <- c(-118.53, -118.44)
+make_map(cit_coords, "lat", "long", sm_lat_lims, sm_long_lims, 14L)
+```
+
+# Average Fine Depending on Car Summary Statistics
+
+```{r}
+make_avg_fines <- clean_data %>%
+  group_by(Make) %>%
+  summarise(Avg_Make_Fine = mean(Fine_Amount, na.rm = TRUE)) %>%
+  # Some citations did not include vehicle make, so removed now.
+  filter(!(Make == "")) %>%
+  arrange(desc(Avg_Make_Fine))
+```
+
+## Violation Code / Description Discussion
+
+```{r}
+length(unique(clean_data$Violation_Code))
+length(unique(clean_data$Violation_Description))
+```
+
+We can see that there are fewer Violation Codes than Violation Descriptions,
+indicating that different Violation Descriptions are being classified with the
+same code. However, when inspecting the data, it appears there are many
+different spellings for an individual Violation Description.
+
+## Most Common Citation Descriptions by Make
+
+```{r}
+make_com_cits <- clean_data %>%
+  group_by(Make) %>%
+  summarise(Make_Cit_Type = names(which.max(table(Violation_Description))))
 ```
