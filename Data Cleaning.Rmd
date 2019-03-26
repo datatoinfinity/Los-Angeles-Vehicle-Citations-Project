@@ -133,19 +133,11 @@ avg_area_fines <- fines_area %>%
   summarise(Avg_Fine = mean(Fine_Amount))
 ```
 
-# Change Date-Time Variables to Character Before Fwrite
-
-```{r}
-# Fwrite writes data fast, but changes date-time variables into ISO format.
-# Will store as character before writing to preserve data.
-#clean_data$Issue_DT <- as.character(clean_data$Issue_DT)
-#clean_data$TOD <- as.character(clean_data$TOD)
-```
-
 # Write Excel Spreadsheets
 
 ```{r}
-# For date-time columns, will be rewritten in ISO format. Will transform back.
+# For date-time columns, will be converted with write.csv, which saves as a
+# character for easier conversion back.
 fwrite(clean_data, "Cleaned Data.csv", dateTimeAs = "write.csv")
 fwrite(cit_coords, "Citations by Location.csv")
 fwrite(avg_area_fines, "Average Fine by Location.csv")
