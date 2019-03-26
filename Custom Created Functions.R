@@ -127,7 +127,8 @@ make_map <- function(my_data, lat_col_name, long_col_name, lat_lims,
     scale_alpha(range = c(0, 0.3), guide = FALSE)
 }
 
-graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name) {
+graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name,
+                       x_axis_label, y_axis_label) {
   # Graphs the daily number of citations for a given month.
   #
   # Args:
@@ -138,6 +139,8 @@ graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name) {
   #                for the x-axis data.
   #   y_axis_name: A string which is name of the column in my_data to be used
   #                for the y-axis data.
+  #   x_axis_label: A string which is the name of the x-axis label on the plot.
+  #   y_axis_label: A string which is the name of the y-axis label on the plot.
   #
   # Returns:
   #   A bar graph of a daily number of citations for a given month.
@@ -157,12 +160,20 @@ graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name) {
     stop("Argument y_axis_name is of incorrect data type:", str(y_axis_name),
          ".")
   }
+  if (is.character(x_axis_label) == FALSE) {
+    stop("Argument x_axis_label is of incorrect data type:", str(x_axis_name),
+         ".")
+  }
+  if (is.character(y_axis_label) == FALSE) {
+    stop("Argument y_axis_label is of incorrect data type:", str(y_axis_name),
+         ".")
+  }
   # e <-
   ggplot(my_data, aes_string(x = x_axis_name, y = y_axis_name)) +
     geom_bar(color = "red", fill = "red", stat = "identity") + 
     theme(axis.text.x = element_text(hjust = 1),
           plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
     ggtitle(plot_title) +
-    labs(x = 'Month and Day', y = "# of Citations")
+    labs(x = x_axis_label, y = y_axis_label)
   #print(e)
 }
