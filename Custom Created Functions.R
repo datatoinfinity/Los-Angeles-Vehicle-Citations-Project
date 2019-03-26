@@ -168,12 +168,10 @@ graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name,
     stop("Argument y_axis_label is of incorrect data type:", str(y_axis_name),
          ".")
   }
-  # e <-
   ggplot(my_data, aes_string(x = x_axis_name, y = y_axis_name)) +
     geom_bar(color = "red", fill = "red", stat = "identity") + 
     theme(axis.text.x = element_text(hjust = 1),
           plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
     ggtitle(plot_title) +
     labs(x = x_axis_label, y = y_axis_label)
-  #print(e)
 }
