@@ -127,9 +127,9 @@ cit_coords <- coord_data %>%
 
 ```{r}
 fines_area <- coord_data %>%
-  select("Fine_Amount", "Latitude", "Longitude")  
+  select("Fine_Amount", "New_Latitude", "New_Longitude")  
 avg_area_fines <- fines_area %>%
-  group_by(Latitude, Longitude) %>%
+  group_by(New_Latitude, New_Longitude) %>%
   summarise(Avg_Fine = mean(Fine_Amount))
 ```
 
