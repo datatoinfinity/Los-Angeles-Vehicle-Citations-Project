@@ -101,6 +101,34 @@ graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name,
          y = y_axis_label)
 }
 
+zoom_in <- function(my_map, my_data, lat_col_name, long_col_name,) {
+
+  #   lat_col_name: The string name of the column containing the latitude
+  #                  coordinates.  
+  #   long_col_name: The string name of the column containing the longitude
+  #                  coordinates.  
+  if (is.data.frame(my_data) == FALSE) {
+    stop("Argument my_data is of incorrect data type: ", str(my_data), ".")
+  }
+  if (is.character(plot_title) == FALSE) {
+    stop("Argument plot_title is of incorrect data type:", str(plot_title),
+         ".")
+  }
+
+
+  map_lat_lims <- c(unname(unlist(attr(my_map, "bb")["ll.lat"])),
+                    unname(unlist(attr(my_map, "bb")["ur.lat"])))
+  map_lon_lims <- c(unname(unlist(attr(my_map, "bb")["ll.lon"])),
+                    unname(unlist(attr(my_map, "bb")["ur.lon"])))  
+  map_coords <- my_data %>%
+    select(lat_col_name, long_col_name) %>%
+    filter(lat_col_name >= map_lat_lims[1] & 
+             lat_col_name <= map_lat_lims[2] &
+             long_col_name >= map_lon_lims[1] &
+             long_col_name <= map_lon_lims[2])  
+  return(map_coords)
+}
+
 make_map <- function(my_data, loc_map, lat_col_name, long_col_name,
                      plot_title) {
   # Makes a map of a given area based on longitude and latitude coordinates.
