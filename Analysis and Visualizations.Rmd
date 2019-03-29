@@ -71,10 +71,10 @@ cits_by_day <- clean_data %>%
 cits_by_day$Day <- factor(cits_by_day$Day)
 cutoffs_1 <- c(as.Date("2018-04-01"), as.Date("2018-04-30"))
 cutoffs_2 <- c(as.Date("2018-09-01"), as.Date("2018-09-30"))
-april_cits <- subset(cits_by_day, (Date >= cutoffs_1[1] &
-                                   Date <= cutoffs_1[2]))
-sept_cits <- subset(cits_by_day, (Date >= cutoffs_2[1] &
-                                  Date <= cutoffs_2[2]))
+april_cits <- cits_by_day %>%
+  filter(Date >= cutoffs_1[1] & Date <= cutoffs_1[2])
+sept_cits <- cits_by_day %>%
+  filter(Date >= cutoffs_2[1] & Date <= cutoffs_2[2])
 ```
 
 ```{r}
@@ -107,15 +107,22 @@ cits_by_TOD$Weekday <- factor(cits_by_TOD$Weekday,
 # day.
 x_lims <- c(floor_date(min(cits_by_TOD$TOD), "day"),
             ceiling_date(max(cits_by_TOD$TOD), "day"))
-ggplot(cits_by_TOD, aes(x = TOD, y = Total_Cits)) +
-  geom_line(color = "red", size = 0.2) + 
+ggplot(cits_by_TOD,
+       aes(x = TOD, y = Total_Cits)) +
+  geom_line(color = "red",
+            size = 0.2) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
-        plot.title = element_text(hjust = 0.5), legend.position = "bottom") + 
-  labs(x = 'Citation Time (Military Time)', y = "Number of Citations",
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom") + 
+  labs(x = 'Citation Time (Military Time)',
+       y = "Number of Citations",
        title = "Total Citations By Weekday and Time for 2018") + 
   ylim(0, 1500) +
-  facet_wrap( ~ Weekday, ncol = 2, scales = "free") +
-  scale_x_datetime(breaks = date_breaks("1 hour"), limits = x_lims,
+  facet_wrap(~ Weekday,
+             ncol = 2,
+            scales = "free") +
+  scale_x_datetime(breaks = date_breaks("1 hour"),
+                   limits = x_lims,
                    labels = date_format("%H:%M", tz = "America/Los_Angeles"),
                    expand = c(0, 0))
 ```
@@ -130,13 +137,18 @@ avg_cits_by_TOD <- clean_data %>%
 ```
 
 ```{r}
-ggplot(avg_cits_by_TOD, aes(x = TOD, y = Avg_Cits)) +
-  geom_line(color = "red", size = 0.2) + 
+ggplot(avg_cits_by_TOD,
+       aes(x = TOD, y = Avg_Cits)) +
+  geom_line(color = "red",
+            size = 0.2) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
-        plot.title = element_text(hjust = 0.5), legend.position = "bottom") + 
-  labs(x = 'Citation Time (Military Time)', y = "Number of Citations",
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom") + 
+  labs(x = 'Citation Time (Military Time)',
+       y = "Number of Citations",
        title = "Average Citations By Time By Day for 2018") + 
-  scale_x_datetime(breaks = date_breaks("1 hour"), limits = x_lims,
+  scale_x_datetime(breaks = date_breaks("1 hour"),
+                   limits = x_lims,
                    labels = date_format("%H:%M", tz = "America/Los_Angeles"),
                    expand = c(0, 0))
 ```
@@ -159,20 +171,22 @@ still see a trend nonetheless.
 coord_data <- clean_data %>%
   filter(New_Latitude >= 30 & New_Longitude >= -125)
 
-#cit_coords <- coord_data %>%
-#  group_by(New_Latitude, New_Longitude) %>%
-#  summarise(Frequency = n())
-
 # Look at all of Los Angeles first.
 la <- get_map(location = "los angeles", zoom = 10)
 
 ggmap(la) + 
   coord_cartesian() + 
-  geom_hex(data = coord_data, aes(x = New_Longitude, y = New_Latitude), 
-           alpha = 0.5, color = "black", show.legend = TRUE, stat = "binhex") +
+  geom_hex(data = coord_data,
+           aes(x = New_Longitude, y = New_Latitude), 
+           alpha = 0.5,
+           color = "black",
+           show.legend = TRUE,
+           stat = "binhex") +
   scale_fill_gradientn(colours = c("blue","red")) +
   labs(title = str_c('Heatmap of Parking Citations across LA for 2018'),
-       fill = str_c('# of', '\nCitations'), x = "Longitude", y = "Latitude") +
+       x = "Longitude",
+       y = "Latitude",
+       fill = str_c('# of', '\nCitations')) +
   theme(text = element_text(color = "#444444"),
         plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
 ```
@@ -181,26 +195,13 @@ ggmap(la) +
 
 ```{r}
 # Note, the concentration and gradients for the zoomed in maps reflect only
-# the citations that are located in that new map. Warning that rows are
-# removed are tickets outside the limits of the map.
+# the citations that are located in that new map. 
 # Limits for the zoomed in for Downtown LA.
 dt_lat_lims <- c(34.03, 34.07)
 dt_lon_lims <- c(-118.3, -118.21)
 dt <- get_map(location = c(lon = mean(dt_lon_lims), lat = mean(dt_lat_lims)),
               zoom = 15L)
-# The following ensures that all the coordinates in the dataset are within
-# the zoomed in map.
-dt_map_lat_lims <- c(unname(unlist(attr(dt, "bb")["ll.lat"])),
-                     unname(unlist(attr(dt, "bb")["ur.lat"])))
-dt_map_lon_lims <- c(unname(unlist(attr(dt, "bb")["ll.lon"])),
-                     unname(unlist(attr(dt, "bb")["ur.lon"])))  
-dt_coords <- coord_data %>%
-  select(New_Latitude, New_Longitude) %>%
-  filter(New_Latitude >= dt_map_lat_lims[1] & 
-         New_Latitude <= dt_map_lat_lims[2] &
-         New_Longitude >= dt_map_lon_lims[1] &
-         New_Longitude <= dt_map_lon_lims[2])
-
+dt_coords <- zoom_in(coord_data, dt, "New_Latitude", "New_Longitude")
 make_map(dt_coords, dt, "New_Latitude", "New_Longitude",
          "Heatmap of 2018 Downtown LA Parking Citations")
 ```
@@ -210,26 +211,11 @@ make_map(dt_coords, dt, "New_Latitude", "New_Longitude",
 ```{r}
 # Limits for the zoomed in for UCLA/Westwood Area.
 ucla_lat_lims <- c(34.0, 34.1)
-ucla_long_lims <- c(-118.47, -118.4)
-ucla <- get_map(location = c(lon = mean(ucla_long_lims), lat = mean(ucla_lat_lims)),
-              zoom = 14L)
-
-ucla_map_lat_lims <- c(unname(unlist(attr(ucla, "bb")["ll.lat"])),
-                     unname(unlist(attr(ucla, "bb")["ur.lat"])))
-ucla_map_lon_lims <- c(unname(unlist(attr(ucla, "bb")["ll.lon"])),
-                     unname(unlist(attr(ucla, "bb")["ur.lon"])))  
-ucla_coords <- coord_data %>%
-  select(New_Latitude, New_Longitude) %>%
-  filter(New_Latitude >= ucla_map_lat_lims[1] & 
-         New_Latitude <= ucla_map_lat_lims[2] &
-         New_Longitude >= ucla_map_lon_lims[1] &
-         New_Longitude <= ucla_map_lon_lims[2])
-
-#ucla_coords <- coord_data %>%
-#  select(New_Latitude, New_Longitude) %>%
-#  filter(New_Latitude >= ucla_lat_lims[1] & New_Latitude <= ucla_lat_lims[2] &
-#         New_Longitude >= ucla_long_lims[1] &
-#         New_Longitude <= ucla_long_lims[2])
+ucla_lon_lims <- c(-118.47, -118.4)
+ucla <- get_map(location = c(lon = mean(ucla_lon_lims),
+                             lat = mean(ucla_lat_lims)),
+                zoom = 14L)
+ucla_coords <- zoom_in(coord_data, ucla, "New_Latitude", "New_Longitude")
 make_map(ucla_coords, ucla, "New_Latitude", "New_Longitude",
          "Heatmap of 2018 Westwood Parking Citations")
 ```
@@ -242,16 +228,7 @@ vn_lat_lims <- c(33.94, 34.03)
 vn_lon_lims <- c(-118.52, -118.42)
 vn <- get_map(location = c(lon = mean(vn_lon_lims), lat = mean(vn_lat_lims)),
               zoom = 14L)
-vn_map_lat_lims <- c(unname(unlist(attr(vn, "bb")["ll.lat"])),
-                     unname(unlist(attr(vn, "bb")["ur.lat"])))
-vn_map_lon_lims <- c(unname(unlist(attr(vn, "bb")["ll.lon"])),
-                     unname(unlist(attr(vn, "bb")["ur.lon"])))  
-vn_coords <- coord_data %>%
-  select(New_Latitude, New_Longitude) %>%
-  filter(New_Latitude >= vn_map_lat_lims[1] & 
-         New_Latitude <= vn_map_lat_lims[2] &
-         New_Longitude >= vn_map_lon_lims[1] &
-         New_Longitude <= vn_map_lon_lims[2])
+vn_coords <- zoom_in(coord_data, vn, "New_Latitude", "New_Longitude")
 make_map(vn_coords, vn, "New_Latitude", "New_Longitude",
          "Heatmap of 2018 Venice Parking Citations")
 ```
@@ -261,7 +238,7 @@ make_map(vn_coords, vn, "New_Latitude", "New_Longitude",
 ```{r}
 #fines_area <- coord_data %>%
 #  select("Fine_Amount", "New_Latitude", "New_Longitude")  
-avg_area_fines <- fines_area %>%
+avg_area_fines <- coord_data %>%
   select("Fine_Amount", "New_Latitude", "New_Longitude") %>%
   group_by(New_Latitude, New_Longitude) %>%
   summarise(Avg_Fine = mean(Fine_Amount))
@@ -272,7 +249,7 @@ avg_area_fines <- fines_area %>%
 ```{r}
 ggmap(la) %+% avg_area_fines +
   aes(x = New_Longitude, y = New_Latitude, z = Avg_Fine) + 
-  stat_summary_2d(fun = mean, binwidth = c(.005, .005), alpha = 0.5) + 
+  stat_summary_2d(fun = mean, binwidth = c(.01, .01), alpha = 0.5) + 
   scale_fill_viridis(option = 'inferno') +
   labs(x = "Longitude", y = "Latitude") + 
   coord_map()
@@ -434,4 +411,44 @@ make_com_cits <- clean_data %>%
 #       fill = str_c('# of', '\nCitations'), x = "Longitude", y = "Latitude") +
 #  theme(text = element_text(color = "#444444"),
 #        plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
+
+# The following ensures that all the coordinates in the dataset are within
+# the zoomed in map.
+#dt_map_lat_lims <- c(unname(unlist(attr(dt, "bb")["ll.lat"])),
+#                     unname(unlist(attr(dt, "bb")["ur.lat"])))
+#dt_map_lon_lims <- c(unname(unlist(attr(dt, "bb")["ll.lon"])),
+#                     unname(unlist(attr(dt, "bb")["ur.lon"])))  
+#dt_coords <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= dt_map_lat_lims[1] & 
+#         New_Latitude <= dt_map_lat_lims[2] &
+#         New_Longitude >= dt_map_lon_lims[1] &
+#         New_Longitude <= dt_map_lon_lims[2])
+
+#vn_map_lat_lims <- c(unname(unlist(attr(vn, "bb")["ll.lat"])),
+#                     unname(unlist(attr(vn, "bb")["ur.lat"])))
+#vn_map_lon_lims <- c(unname(unlist(attr(vn, "bb")["ll.lon"])),
+#                     unname(unlist(attr(vn, "bb")["ur.lon"])))  
+#vn_coords <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= vn_map_lat_lims[1] & 
+#         New_Latitude <= vn_map_lat_lims[2] &
+#         New_Longitude >= vn_map_lon_lims[1] &
+#         New_Longitude <= vn_map_lon_lims[2])
+
+#ucla_map_lat_lims <- c(unname(unlist(attr(ucla, "bb")["ll.lat"])),
+#                     unname(unlist(attr(ucla, "bb")["ur.lat"])))
+#ucla_map_lon_lims <- c(unname(unlist(attr(ucla, "bb")["ll.lon"])),
+#                     unname(unlist(attr(ucla, "bb")["ur.lon"])))  
+#ucla_coords <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= ucla_map_lat_lims[1] & 
+#         New_Latitude <= ucla_map_lat_lims[2] &
+#         New_Longitude >= ucla_map_lon_lims[1] &
+#         New_Longitude <= ucla_map_lon_lims[2])
+#ucla_coords <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= ucla_lat_lims[1] & New_Latitude <= ucla_lat_lims[2] &
+#         New_Longitude >= ucla_long_lims[1] &
+#         New_Longitude <= ucla_long_lims[2])
 ```
