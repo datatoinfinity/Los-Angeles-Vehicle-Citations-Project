@@ -53,7 +53,8 @@ clean_data$Year <- year(ymd(clean_data$Issue_Date))
 #  select(., select = -Year)
 clean_data <- clean_data %>%
   filter(Year == 2018) %>%
-  select(., select = -Year)
+  #select(., select = -Year)
+  select(-Year)
 ```
 
 # Issue Time Cleaning
