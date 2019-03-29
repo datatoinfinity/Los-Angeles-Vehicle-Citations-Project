@@ -16,8 +16,9 @@ output: html_document
 
 ```{r}
 # Import Libraries
-x <- c("dplyr", "magrittr", "lubridate", "ggplot2", "fasttime",
-       "scales", "maps", "ggmap", "tidyr", "data.table", "gridExtra")
+x <- c("dplyr", "magrittr", "lubridate", "ggplot2", "fasttime", "viridis",
+       "scales", "maps", "ggmap", "tidyr", "data.table", "gridExtra",
+       "stringr")
 lapply(x, library, character.only = TRUE)
 source("Custom Created Functions.R")
 rm(x)
@@ -27,8 +28,8 @@ rm(x)
 
 ```{r}
 clean_data <- fread("Cleaned Data.csv", sep = ",")
-cit_coords <- fread("Citations by Location.csv", sep = ",")
-avg_area_fines <- fread("Average Fine by Location.csv", sep = ",")
+#cit_coords <- fread("Citations by Location.csv", sep = ",")
+#avg_area_fines <- fread("Average Fine by Location.csv", sep = ",")
 ```
 
 # Fix Date-Time Columns Back Into Date-Time Values
@@ -44,17 +45,16 @@ tz(clean_data$TOD) <- "America/Los_Angeles"
 
 ```{r}
 tot_cits_month <- clean_data %>%
+  # Removed some entires that were missing an issue date, since they were 
+  # missing an issue date and time for the citation.
+  filter(!is.na(Issue_DT)) %>%
   group_by(Month) %>%
-  summarise(Total_Month_Cits = n()) %>%
-  # Removed some entires that were missing an issue date.
-  filter(Month != "")
+  summarise(Total_Month_Cits = n())
 # Reorder the order of the months.
-tot_cits_month$Month <- factor(tot_cits_month$Month, levels = c("Jan", "Feb",
-                                                                "Mar", "Apr",
-                                                                "May", "Jun",
-                                                                "Jul", "Aug",
-                                                                "Sep", "Oct",
-                                                                "Nov", "Dec"))
+tot_cits_month$Month <- factor(tot_cits_month$Month,
+                               levels = c("Jan", "Feb", "Mar", "Apr", "May",
+                                          "Jun", "Jul", "Aug", "Sep", "Oct",
+                                          "Nov", "Dec"))
 graph_cits(tot_cits_month, "Citations for 2018", "Month", "Total_Month_Cits",
            "Month", "# of Citations")
 ```
@@ -78,13 +78,13 @@ sept_cits <- subset(cits_by_day, (Date >= cutoffs_2[1] &
 ```
 
 ```{r}
-graph_cits(april_cits, "Citations for April 2018", "Day", "Tot_Day_Cits",
-           "Day", "# of Citations")
+graph_cits(april_cits, "Citations by Day for April 2018", "Day",
+           "Tot_Day_Cits", "Day", "# of Citations")
 ```
 
 ```{r}
-graph_cits(sept_cits, "Citations for September 2018", "Day", "Tot_Day_Cits",
-           "Day", "# of Citations")
+graph_cits(sept_cits, "Citations by Day for September 2018", "Day",
+           "Tot_Day_Cits", "Day", "# of Citations")
 ```
 
 # Cits by Time of Day and Weekday
@@ -103,16 +103,21 @@ cits_by_TOD$Weekday <- factor(cits_by_TOD$Weekday,
 ```
 
 ```{r}
+# To have the plot start at midnight on the current day and go until the next 
+# day.
+x_lims <- c(floor_date(min(cits_by_TOD$TOD), "day"),
+            ceiling_date(max(cits_by_TOD$TOD), "day"))
 ggplot(cits_by_TOD, aes(x = TOD, y = Total_Cits)) +
-  geom_line(color = "red", size = 0.25) + 
+  geom_line(color = "red", size = 0.2) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         plot.title = element_text(hjust = 0.5), legend.position = "bottom") + 
   labs(x = 'Citation Time (Military Time)', y = "Number of Citations",
        title = "Total Citations By Weekday and Time for 2018") + 
   ylim(0, 1500) +
   facet_wrap( ~ Weekday, ncol = 2, scales = "free") +
-  scale_x_datetime(breaks = date_breaks("1 hour"),
-                   labels = date_format("%H:%M", tz = "America/Los_Angeles"))
+  scale_x_datetime(breaks = date_breaks("1 hour"), limits = x_lims,
+                   labels = date_format("%H:%M", tz = "America/Los_Angeles"),
+                   expand = c(0, 0))
 ```
 
 ```{r}
@@ -126,18 +131,18 @@ avg_cits_by_TOD <- clean_data %>%
 
 ```{r}
 ggplot(avg_cits_by_TOD, aes(x = TOD, y = Avg_Cits)) +
-  geom_line(color = "red", size = 0.25) + 
+  geom_line(color = "red", size = 0.2) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         plot.title = element_text(hjust = 0.5), legend.position = "bottom") + 
   labs(x = 'Citation Time (Military Time)', y = "Number of Citations",
        title = "Average Citations By Time By Day for 2018") + 
-  scale_x_datetime(breaks = date_breaks("1 hour"),
-                   labels = date_format("%H:%M", tz = "America/Los_Angeles"))
+  scale_x_datetime(breaks = date_breaks("1 hour"), limits = x_lims,
+                   labels = date_format("%H:%M", tz = "America/Los_Angeles"),
+                   expand = c(0, 0))
 ```
 
 Keep in mind that Saturday and Sunday are driving down the averages, but we 
 still see a trend nonetheless.
-
 
 # Lets Look at Some Heatmaps!
 
@@ -148,14 +153,28 @@ still see a trend nonetheless.
 # Use this line of code for registering the API key for google cloud:
 # register_google(key = "Your Key Here")
 
+# 11% of the 2018 data was missing Latitude and Longitude data (the values
+# were stored as 99999). These values were also transformed in the new
+# coordinate system. Removed these values for the mapping data.
+coord_data <- clean_data %>%
+  filter(New_Latitude >= 30 & New_Longitude >= -125)
+
+#cit_coords <- coord_data %>%
+#  group_by(New_Latitude, New_Longitude) %>%
+#  summarise(Frequency = n())
+
 # Look at all of Los Angeles first.
 la <- get_map(location = "los angeles", zoom = 10)
-ggmap(la) +
-  stat_density2d(data = cit_coords, aes(x = long, y = lat, fill = ..level..,
-                                        alpha = ..level..),
-                 geom = "polygon", size = 0.01, bins = 16) +
-  scale_fill_gradient(low = "black", high = "red") +
-  scale_alpha(range = c(0, 0.3), guide = FALSE)
+
+ggmap(la) + 
+  coord_cartesian() + 
+  geom_hex(data = coord_data, aes(x = New_Longitude, y = New_Latitude), 
+           alpha = 0.5, color = "black", show.legend = TRUE, stat = "binhex") +
+  scale_fill_gradientn(colours = c("blue","red")) +
+  labs(title = str_c('Heatmap of Parking Citations across LA for 2018'),
+       fill = str_c('# of', '\nCitations'), x = "Longitude", y = "Latitude") +
+  theme(text = element_text(color = "#444444"),
+        plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
 ```
 
 ## Let's Look at Downtown LA More Closely
@@ -166,8 +185,24 @@ ggmap(la) +
 # removed are tickets outside the limits of the map.
 # Limits for the zoomed in for Downtown LA.
 dt_lat_lims <- c(34.03, 34.07)
-dt_long_lims <- c(-118.3, -118.21)
-make_map(cit_coords, "lat", "long", dt_lat_lims, dt_long_lims, 15L)
+dt_lon_lims <- c(-118.3, -118.21)
+dt <- get_map(location = c(lon = mean(dt_lon_lims), lat = mean(dt_lat_lims)),
+              zoom = 15L)
+# The following ensures that all the coordinates in the dataset are within
+# the zoomed in map.
+dt_map_lat_lims <- c(unname(unlist(attr(dt, "bb")["ll.lat"])),
+                     unname(unlist(attr(dt, "bb")["ur.lat"])))
+dt_map_lon_lims <- c(unname(unlist(attr(dt, "bb")["ll.lon"])),
+                     unname(unlist(attr(dt, "bb")["ur.lon"])))  
+dt_coords <- coord_data %>%
+  select(New_Latitude, New_Longitude) %>%
+  filter(New_Latitude >= dt_map_lat_lims[1] & 
+         New_Latitude <= dt_map_lat_lims[2] &
+         New_Longitude >= dt_map_lon_lims[1] &
+         New_Longitude <= dt_map_lon_lims[2])
+
+make_map(dt_coords, dt, "New_Latitude", "New_Longitude",
+         "Heatmap of 2018 Downtown LA Parking Citations")
 ```
 
 ## Let's Look at the UCLA/Westwood Area More Closely
@@ -176,16 +211,71 @@ make_map(cit_coords, "lat", "long", dt_lat_lims, dt_long_lims, 15L)
 # Limits for the zoomed in for UCLA/Westwood Area.
 ucla_lat_lims <- c(34.0, 34.1)
 ucla_long_lims <- c(-118.47, -118.4)
-make_map(cit_coords, "lat", "long", ucla_lat_lims, ucla_long_lims, 14L)
+ucla <- get_map(location = c(lon = mean(ucla_long_lims), lat = mean(ucla_lat_lims)),
+              zoom = 14L)
+
+ucla_map_lat_lims <- c(unname(unlist(attr(ucla, "bb")["ll.lat"])),
+                     unname(unlist(attr(ucla, "bb")["ur.lat"])))
+ucla_map_lon_lims <- c(unname(unlist(attr(ucla, "bb")["ll.lon"])),
+                     unname(unlist(attr(ucla, "bb")["ur.lon"])))  
+ucla_coords <- coord_data %>%
+  select(New_Latitude, New_Longitude) %>%
+  filter(New_Latitude >= ucla_map_lat_lims[1] & 
+         New_Latitude <= ucla_map_lat_lims[2] &
+         New_Longitude >= ucla_map_lon_lims[1] &
+         New_Longitude <= ucla_map_lon_lims[2])
+
+#ucla_coords <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= ucla_lat_lims[1] & New_Latitude <= ucla_lat_lims[2] &
+#         New_Longitude >= ucla_long_lims[1] &
+#         New_Longitude <= ucla_long_lims[2])
+make_map(ucla_coords, ucla, "New_Latitude", "New_Longitude",
+         "Heatmap of 2018 Westwood Parking Citations")
 ```
 
-## Let's Look at Santa Monica/Venice More Closely
+## Let's Look at Venice More Closely
 
 ```{r}
-# Limits for the zoomed in for Santa Monica/Venice.
-sm_lat_lims <- c(33.95, 34.05)
-sm_long_lims <- c(-118.53, -118.44)
-make_map(cit_coords, "lat", "long", sm_lat_lims, sm_long_lims, 14L)
+# Limits for the zoomed in for Venice.
+vn_lat_lims <- c(33.94, 34.03)
+vn_lon_lims <- c(-118.52, -118.42)
+vn <- get_map(location = c(lon = mean(vn_lon_lims), lat = mean(vn_lat_lims)),
+              zoom = 14L)
+vn_map_lat_lims <- c(unname(unlist(attr(vn, "bb")["ll.lat"])),
+                     unname(unlist(attr(vn, "bb")["ur.lat"])))
+vn_map_lon_lims <- c(unname(unlist(attr(vn, "bb")["ll.lon"])),
+                     unname(unlist(attr(vn, "bb")["ur.lon"])))  
+vn_coords <- coord_data %>%
+  select(New_Latitude, New_Longitude) %>%
+  filter(New_Latitude >= vn_map_lat_lims[1] & 
+         New_Latitude <= vn_map_lat_lims[2] &
+         New_Longitude >= vn_map_lon_lims[1] &
+         New_Longitude <= vn_map_lon_lims[2])
+make_map(vn_coords, vn, "New_Latitude", "New_Longitude",
+         "Heatmap of 2018 Venice Parking Citations")
+```
+
+# Highest Average Fines by Area
+
+```{r}
+#fines_area <- coord_data %>%
+#  select("Fine_Amount", "New_Latitude", "New_Longitude")  
+avg_area_fines <- fines_area %>%
+  select("Fine_Amount", "New_Latitude", "New_Longitude") %>%
+  group_by(New_Latitude, New_Longitude) %>%
+  summarise(Avg_Fine = mean(Fine_Amount))
+```
+
+# Average Fines by Location
+
+```{r}
+ggmap(la) %+% avg_area_fines +
+  aes(x = New_Longitude, y = New_Latitude, z = Avg_Fine) + 
+  stat_summary_2d(fun = mean, binwidth = c(.005, .005), alpha = 0.5) + 
+  scale_fill_viridis(option = 'inferno') +
+  labs(x = "Longitude", y = "Latitude") + 
+  coord_map()
 ```
 
 # Average Fine Depending on Car Summary Statistics
@@ -217,4 +307,131 @@ different spellings for an individual Violation Description.
 make_com_cits <- clean_data %>%
   group_by(Make) %>%
   summarise(Make_Cit_Type = names(which.max(table(Violation_Description))))
+```
+
+
+# Extra Code
+
+```{r}
+#ggmap(la) +
+#  stat_density2d(data = cit_coords, aes(x = New_Longitude, y = New_Latitude,
+#                                        fill = ..level.., alpha = ..level..),
+#                 geom = "polygon", size = 0.01, bins = 16) +
+#  scale_fill_viridis(option = 'inferno') +
+#  scale_alpha(range = c(0, 0.4), guide = FALSE)
+
+#ggmap(la) +
+#  stat_density2d(data = cit_coords, aes(x = long, y = lat, fill = ..density..),
+#                 geom = "tile", contour = FALSE, alpha = 0.5) +
+#  scale_fill_viridis(option = 'inferno') +
+#  labs(title = str_c('Heatmap of Parking Citations across LA'),
+#       fill = str_c('Density Gradient of', '\nCitations')) +
+#  theme(text = element_text(color = "#444444"),
+#        plot.title = element_text(size = 16, face = 'bold'),
+#        axis.title = element_blank())
+
+# Need to sample since can't plot all of the coordinates
+#set.seed(12345)
+#ggmap(la) +
+#  stat_density2d(data = sample_n(coord_data[, c("New_Latitude",
+#                                                "New_Longitude")], 1200000),
+#                 aes(x = New_Longitude, y = New_Latitude, fill = ..density..),
+#                 geom = "tile", contour = FALSE) +
+#  scale_alpha(range = c(0, 0.5)) +
+#  scale_fill_viridis(option = 'inferno') +
+#  labs(title = str_c('Heatmap of Parking Citations across LA'),
+#       fill = str_c('Density of', '\nCitations')) +
+#  theme(text = element_text(color = "#444444"),
+#        plot.title = element_text(size = 16, face = 'bold'),
+#        axis.title = element_blank())
+
+
+#a <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= dt_lat_lims[1] & New_Latitude <= dt_lat_lims[2] &
+#         New_Longitude >= dt_long_lims[1] & New_Longitude <= dt_long_lims[2])
+
+
+#dt <- get_map(location = c(lon = mean(dt_long_lims), lat = mean(dt_lat_lims)),
+#              zoom = 15L)
+#ggmap(dt) +
+#  stat_density2d(data = a, aes(x = New_Longitude, y = New_Latitude,
+#                               fill = ..level.., alpha = ..level..),
+#                 geom = "polygon", size = 0.010, bins = 40) +
+#  scale_alpha(range = c(0, 0.4), guide = FALSE) +
+#  scale_fill_viridis(option = 'inferno')
+
+#ucla <- get_map(location = c(lon = mean(ucla_long_lims), lat = mean(ucla_lat_lims)),
+#              zoom = 14L)
+#b <- cit_coords %>%
+#  filter(New_Latitude >= ucla_lat_lims[1] & New_Latitude <= ucla_lat_lims[2] &
+#         New_Longitude >= ucla_long_lims[1] & New_Longitude <= ucla_long_lims[2])
+#ggmap(ucla) + 
+#  coord_cartesian() + 
+#  geom_hex(data = b, aes(x = New_Longitude, y = New_Latitude,
+#                         colour = Frequency), 
+#           alpha = 0.5, color = "black", show.legend = TRUE, stat = "binhex") +
+#  guides(fill = FALSE, alpha = FALSE) +
+#  scale_fill_gradientn(colours = c("black","red"))
+
+#ggmap(ucla) +
+#  stat_density2d(data = b, aes(x = New_Longitude, y = New_Latitude,
+#                               fill = ..level.., alpha = ..level..),
+#                 geom = "polygon", size = 0.1, bins = 30) +
+#  scale_alpha(range = c(0, 1), guide = FALSE) +
+#  scale_fill_gradientn(colours = c("yellow","red"))
+#b <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= ucla_lat_lims[1] & New_Latitude <= ucla_lat_lims[2] &
+#         New_Longitude >= ucla_long_lims[1] & New_Longitude <= ucla_long_lims[2])
+
+#ggmap(ucla) +
+#  stat_density2d(data = ucla_coords, aes(x = New_Longitude, y = New_Latitude,
+#                                         fill = ..density..),
+#                 geom = 'tile', contour = FALSE, alpha = .4) +
+#  scale_fill_viridis(option = 'inferno') +
+#  labs(title = str_c('Heatmap of 2018 Westwood Parking Citations'),
+#       fill = str_c('Number of', '\nCitations'), x = "Longitude",  y = "Latitude") +
+#  theme(text = element_text(color = "#444444"),
+#        plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
+#
+
+#make_map(cit_coords, "lat", "long", dt_lat_lims, dt_long_lims, 15L)
+
+#a <- coord_data %>%
+#  select(New_Latitude, New_Longitude) %>%
+#  filter(New_Latitude >= dt_lat_lims[1] & New_Latitude <= dt_lat_lims[2] &
+#         New_Longitude >= dt_long_lims[1] & New_Longitude <= dt_long_lims[2])
+
+
+#dt <- get_map(location = c(lon = mean(dt_long_lims), lat = mean(dt_lat_lims)),
+#              zoom = 15L)
+#ggmap(dt) +
+#  stat_density2d(data = a, aes(x = New_Longitude, y = New_Latitude,
+#                               fill = ..level.., alpha = ..level..),
+#                 geom = "polygon", size = 0.010, bins = 40) +
+#  scale_alpha(range = c(0, 0.4), guide = FALSE) +
+#  scale_fill_viridis(option = 'inferno')
+
+#ggmap(dt) +
+#  stat_density2d(data = dt_coords, aes(x = New_Longitude, y = New_Latitude,
+#                                       fill = ..density..),
+#                 geom = 'tile', contour = FALSE, alpha = .4) +
+#  scale_fill_viridis(option = 'inferno') +
+#  labs(title = str_c('Heatmap of Downtown LA Parking Citations for 2018'),
+#       fill = str_c('# of', '\nCitations'), x = "Longitude",  y = "Latitude") +
+#  theme(text = element_text(color = "#444444"),
+#        plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
+
+
+#ggmap(la) + 
+#  coord_cartesian() + 
+#  geom_hex(data = cit_coords, aes(x = New_Longitude, y = New_Latitude), 
+#           alpha = 0.5, color = "black", show.legend = TRUE, stat = "binhex",
+#           bins = 50) +
+#  scale_fill_gradientn(colours = c("blue","red")) +
+#  labs(title = str_c('Heatmap of Parking Citations across LA for 2018'),
+#       fill = str_c('# of', '\nCitations'), x = "Longitude", y = "Latitude") +
+#  theme(text = element_text(color = "#444444"),
+#        plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
 ```
