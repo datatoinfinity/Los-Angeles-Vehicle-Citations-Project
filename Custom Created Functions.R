@@ -47,86 +47,6 @@ correct_time <- function(my_data, column, column_name) {
   output
 }
 
-make_map <- function(my_data, lat_col_name, long_col_name, lat_lims,
-                     long_lims, zoom_amt) {
-  # Makes a map of a given area based on longitude and latitude coordinates.
-  #
-  # Args:
-  #   my_data: A dataframe with columns of latitude and longitude coordinates
-  #            and Frequency of each pair of coordinates.
-  #   lat_col_name: The string name of the column containing the latitude
-  #                  coordinates.  
-  #   long_col_name: The string name of the column containing the longitude
-  #                  coordinates.
-  #   lat_lims: A vector of 2 indicates that latitude coordinate limits of the 
-  #            map.
-  #   long_lims: A vector of 2 indicates that longitude coordinate limits of 
-  #              the map.
-  #   zoom_amt: An integer between 3 and 21 (or 18 depending on the mapping
-  #             software) that specifics the level of zoom that you want your
-  #             map to have. 3 is continent level, 21 is building level.
-  #
-  # Returns:
-  #   A heat map of a variable of interest at a given location.
-  # Error handling (rudimentary)
-  if (is.data.frame(my_data) == FALSE) {
-    stop("Argument my_data is of incorrect data type: ",
-         str(my_data), ".")
-  }
-  if (!(lat_col_name %in% names(my_data))) {
-    stop("Argument lat_col_name is not the name of a column of my_data.")
-  }
-  if (!(long_col_name %in% names(my_data))) {
-    stop("Argument long_col_name is not the name of a column of my_data.")
-  }  
-  if (length(lat_lims) != 2) {
-    stop("Argument lat_lims must have two values: ",
-         str(lat_lim), "value currently.")
-  }
-  if (is.numeric(lat_lims) == FALSE) {
-    stop("Argument lat_lims values must only be numeric: ",
-         is.numeric(lat_lim), ".")
-  }
-  if (lat_lims[1] == lat_lims[2]) {
-    stop("Argument lat_lims values must be different: ",
-         lat_lims, ".")
-  }  
-  if (length(long_lims) != 2) {
-    stop("Argument long_lims must have two values: ",
-         str(long_lims), "value currently.")
-  }
-  if (is.numeric(lat_lims) == FALSE) {
-    stop("Argument long_lims values must only be numeric: ",
-         is.numeric(long_lims), ".")
-  }
-  if (long_lims[1] == long_lims[2]) {
-    stop("Argument long_lims values must be different: ",
-         long_lim, ".")
-  }  
-  if (is.integer(zoom_amt) == FALSE) {
-    stop("Argument zoom_amt must be an integer: ",
-         str(zoom_amt), ".")    
-  }
-  if ((zoom_amt < 3) | (zoom_amt > 21)) {
-    stop("Argument zoom_amt must be an integer between 3 and 21: ",
-         zoom_amt, ".")    
-  }  
-  # There is likely a better way using dplyr and quosures, but I was unable
-  # to get it to work.
-  sub_dat <- my_data[which(my_data[, lat_col_name] >= lat_lims[1]), ] %>%
-    .[which(.[, lat_col_name] <= lat_lims[2]), ] %>%
-    .[which(.[, long_col_name] >= long_lims[1]), ] %>%
-    .[which(.[, long_col_name] <= long_lims[2]), ]
-  loc_map <- get_map(location = c(lon = mean(long_lims), lat = mean(lat_lims)),
-                     zoom = zoom_amt)
-  ggmap(loc_map) +
-    stat_density2d(data = sub_dat, aes(x = long, y = lat, fill = ..level..,
-                                       alpha = ..level..),
-                   geom = "polygon", size = 0.01, bins = 16) +
-    scale_fill_gradient(low = "black", high = "red") +
-    scale_alpha(range = c(0, 0.3), guide = FALSE)
-}
-
 graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name,
                        x_axis_label, y_axis_label) {
   # Graphs the daily number of citations for a given month.
@@ -168,10 +88,63 @@ graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name,
     stop("Argument y_axis_label is of incorrect data type:", str(y_axis_name),
          ".")
   }
-  ggplot(my_data, aes_string(x = x_axis_name, y = y_axis_name)) +
-    geom_bar(color = "red", fill = "red", stat = "identity") + 
+  ggplot(my_data,
+         aes_string(x = x_axis_name, y = y_axis_name)) +
+    geom_bar(color = "red",
+             fill = "red",
+             stat = "identity") + 
     theme(axis.text.x = element_text(hjust = 1),
-          plot.title = element_text(hjust = 0.5), legend.position = "bottom") +
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "bottom") +
     ggtitle(plot_title) +
-    labs(x = x_axis_label, y = y_axis_label)
+    labs(x = x_axis_label,
+         y = y_axis_label)
+}
+
+make_map <- function(my_data, loc_map, lat_col_name, long_col_name,
+                     plot_title) {
+  # Makes a map of a given area based on longitude and latitude coordinates.
+  #
+  # Args:
+  #   my_data: A dataframe with columns of latitude and longitude coordinates
+  #            and Frequency of each pair of coordinates.
+  #   loc_map: A ggmap object that is a longitude, latitude map of interest
+  #            to superimpose a ggplot on.
+  #   lat_col_name: The string name of the column containing the latitude
+  #                  coordinates.  
+  #   long_col_name: The string name of the column containing the longitude
+  #                  coordinates.
+  #   plot_title: The string name of the title of the plot.
+  #
+  # Returns:
+  #   A heat map of a variable of interest at a given location.
+  # Error handling (rudimentary)
+  if (is.data.frame(my_data) == FALSE) {
+    stop("Argument my_data is of incorrect data type: ",
+         str(my_data), ".")
+  }
+  if (!(lat_col_name %in% names(my_data))) {
+    stop("Argument lat_col_name is not the name of a column of my_data.")
+  }
+  if (!(long_col_name %in% names(my_data))) {
+    stop("Argument long_col_name is not the name of a column of my_data.")
+  } 
+  if (is.character(plot_title) == FALSE) {
+    stop("Argument plot_title is of incorrect data type: ",
+         str(plot_title), ".")
+  }   
+  ggmap(loc_map) +
+    stat_density2d(data = my_data,
+                   aes_string(x = long_col_name, y = lat_col_name,
+                              fill = "..density.."),
+                   geom = 'tile',
+                   contour = FALSE,
+                   alpha = .4) +
+    scale_fill_viridis(option = 'inferno') +
+    labs(title = str_c(plot_title),
+         fill = str_c('Number of', '\nCitations'),
+         x = "Longitude",
+         y = "Latitude") +
+    theme(text = element_text(color = "#444444"),
+          plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
 }
