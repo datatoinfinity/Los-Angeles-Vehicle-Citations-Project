@@ -101,41 +101,53 @@ graph_cits <- function(my_data, plot_title, x_axis_name, y_axis_name,
          y = y_axis_label)
 }
 
-zoom_in <- function(my_map, my_data, lat_col_name, long_col_name,) {
-
+zoom_in <- function(coord_data, loc_map, lat_col_name, lon_col_name) {
+  # Takes a subset of all the coordinates to git into a zoomed-in map.
+  #
+  # Args:
+  #   coord_data: A dataframe with columns of latitude and longitude
+  #               coordinates and Frequency of each pair of coordinates.
+  #   loc_map: A ggmap object that is a longitude, latitude map of interest
+  #            to superimpose a ggplot on.
   #   lat_col_name: The string name of the column containing the latitude
   #                  coordinates.  
-  #   long_col_name: The string name of the column containing the longitude
+  #   lon_col_name: The string name of the column containing the longitude
   #                  coordinates.  
-  if (is.data.frame(my_data) == FALSE) {
-    stop("Argument my_data is of incorrect data type: ", str(my_data), ".")
-  }
-  if (is.character(plot_title) == FALSE) {
-    stop("Argument plot_title is of incorrect data type:", str(plot_title),
+  # Returns:
+  #   A data frame of coordinates in the zoomed-in map to be graphed.
+  # Error handling (rudimentary)
+  if (is.data.frame(coord_data) == FALSE) {
+    stop("Argument coord_data is of incorrect data type: ", str(coord_data),
          ".")
   }
-
-
-  map_lat_lims <- c(unname(unlist(attr(my_map, "bb")["ll.lat"])),
-                    unname(unlist(attr(my_map, "bb")["ur.lat"])))
-  map_lon_lims <- c(unname(unlist(attr(my_map, "bb")["ll.lon"])),
-                    unname(unlist(attr(my_map, "bb")["ur.lon"])))  
-  map_coords <- my_data %>%
-    select(lat_col_name, long_col_name) %>%
-    filter(lat_col_name >= map_lat_lims[1] & 
-             lat_col_name <= map_lat_lims[2] &
-             long_col_name >= map_lon_lims[1] &
-             long_col_name <= map_lon_lims[2])  
+  if (!(lat_col_name %in% names(coord_data))) {
+    stop("Argument lat_col_name is not the name of a column of coord_data")
+  }
+  if (!(lon_col_name %in% names(coord_data))) {
+    stop("Argument lon_col_name is not the name of a column of coord_data")
+  } 
+  # Limits of map stored in ggmap attributes.
+  map_lat_lims <- c(unname(unlist(attr(loc_map, "bb")["ll.lat"])),
+                    unname(unlist(attr(loc_map, "bb")["ur.lat"])))
+  map_lon_lims <- c(unname(unlist(attr(loc_map, "bb")["ll.lon"])),
+                    unname(unlist(attr(loc_map, "bb")["ur.lon"]))) 
+  lat <- as.name(lat_col_name)
+  lon <- as.name(lon_col_name)
+  # Need to remove quosure to use lat and lon in dplyr calls.
+  map_coords <- coord_data %>%
+    select(UQ(lat), UQ(lon)) %>%
+    filter(UQ(lat) >= map_lat_lims[1] & UQ(lat) <= map_lat_lims[2] &
+             UQ(lon) >= map_lon_lims[1] & UQ(lon) <= map_lon_lims[2])
   return(map_coords)
 }
 
-make_map <- function(my_data, loc_map, lat_col_name, long_col_name,
+make_map <- function(coord_data, loc_map, lat_col_name, long_col_name,
                      plot_title) {
   # Makes a map of a given area based on longitude and latitude coordinates.
   #
   # Args:
-  #   my_data: A dataframe with columns of latitude and longitude coordinates
-  #            and Frequency of each pair of coordinates.
+  #   coord_data: A dataframe with columns of latitude and longitude
+  #               coordinates and Frequency of each pair of coordinates.
   #   loc_map: A ggmap object that is a longitude, latitude map of interest
   #            to superimpose a ggplot on.
   #   lat_col_name: The string name of the column containing the latitude
@@ -147,22 +159,22 @@ make_map <- function(my_data, loc_map, lat_col_name, long_col_name,
   # Returns:
   #   A heat map of a variable of interest at a given location.
   # Error handling (rudimentary)
-  if (is.data.frame(my_data) == FALSE) {
-    stop("Argument my_data is of incorrect data type: ",
-         str(my_data), ".")
+  if (is.data.frame(coord_data) == FALSE) {
+    stop("Argument coord_data is of incorrect data type: ",
+         str(coord_data), ".")
   }
-  if (!(lat_col_name %in% names(my_data))) {
-    stop("Argument lat_col_name is not the name of a column of my_data.")
+  if (!(lat_col_name %in% names(coord_data))) {
+    stop("Argument lat_col_name is not the name of a column of coord_data")
   }
-  if (!(long_col_name %in% names(my_data))) {
-    stop("Argument long_col_name is not the name of a column of my_data.")
+  if (!(long_col_name %in% names(coord_data))) {
+    stop("Argument long_col_name is not the name of a column of coord_data")
   } 
   if (is.character(plot_title) == FALSE) {
     stop("Argument plot_title is of incorrect data type: ",
          str(plot_title), ".")
   }   
   ggmap(loc_map) +
-    stat_density2d(data = my_data,
+    stat_density2d(data = coord_data,
                    aes_string(x = long_col_name, y = lat_col_name,
                               fill = "..density.."),
                    geom = 'tile',
