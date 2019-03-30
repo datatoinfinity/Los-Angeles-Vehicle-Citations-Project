@@ -9,12 +9,11 @@ output: html_document
 
 1. Citations Across the Year / Month / Day.
 2. Locations of the Most Citations
-3. Locations with the Highest Average Fine
-4.
+3. Types of Top Violations Over The Day
 
 # Libraries
 
-```{r}
+```{r, warning = FALSE}
 # Import Libraries
 x <- c("dplyr", "magrittr", "lubridate", "ggplot2", "fasttime", "viridis",
        "scales", "maps", "ggmap", "tidyr", "data.table", "gridExtra",
@@ -28,8 +27,6 @@ rm(x)
 
 ```{r}
 clean_data <- fread("Cleaned Data.csv", sep = ",")
-#cit_coords <- fread("Citations by Location.csv", sep = ",")
-#avg_area_fines <- fread("Average Fine by Location.csv", sep = ",")
 ```
 
 # Fix Date-Time Columns Back Into Date-Time Values
@@ -39,6 +36,8 @@ clean_data$Issue_DT <- fastPOSIXct(clean_data$Issue_DT, tz = "UTC")
 tz(clean_data$Issue_DT) <- "America/Los_Angeles"
 clean_data$TOD <- fastPOSIXct(clean_data$TOD, tz = "UTC")
 tz(clean_data$TOD) <- "America/Los_Angeles"
+clean_data$Time <- format(clean_data$TOD, "%H:%M:%S")
+clean_data$Hour <- format(clean_data$TOD, "%H")
 ```
 
 # Tickets by Month
@@ -55,8 +54,8 @@ tot_cits_month$Month <- factor(tot_cits_month$Month,
                                levels = c("Jan", "Feb", "Mar", "Apr", "May",
                                           "Jun", "Jul", "Aug", "Sep", "Oct",
                                           "Nov", "Dec"))
-graph_cits(tot_cits_month, "Citations for 2018", "Month", "Total_Month_Cits",
-           "Month", "# of Citations")
+graph_cits(tot_cits_month, "Total Citations by Month for 2018", "Month",
+           "Total_Month_Cits", "Month", "# of Citations")
 ```
 
 # Two Chosen Months
@@ -78,16 +77,16 @@ sept_cits <- cits_by_day %>%
 ```
 
 ```{r}
-graph_cits(april_cits, "Citations by Day for April 2018", "Day",
+graph_cits(april_cits, "Total Citations by Day for April 2018", "Day",
            "Tot_Day_Cits", "Day", "# of Citations")
 ```
 
 ```{r}
-graph_cits(sept_cits, "Citations by Day for September 2018", "Day",
+graph_cits(sept_cits, "Total Citations by Day for September 2018", "Day",
            "Tot_Day_Cits", "Day", "# of Citations")
 ```
 
-# Cits by Time of Day and Weekday
+# Total Number of Citations by Time of Day and Weekday
 
 ```{r}
 # Removed entries that were missing Issue Date-times.
@@ -95,14 +94,6 @@ cits_by_TOD <- clean_data %>%
   filter(!is.na(Issue_DT)) %>%
   group_by(TOD, Weekday) %>%
   summarise(Total_Cits = n())
-# Reorder the plots.
-cits_by_TOD$Weekday <- factor(cits_by_TOD$Weekday,
-                              levels = c("Monday", "Tuesday", "Wednesday",
-                                         "Thursday", "Friday", "Saturday",
-                                         "Sunday"))
-```
-
-```{r}
 # To have the plot start at midnight on the current day and go until the next 
 # day.
 x_lims <- c(floor_date(min(cits_by_TOD$TOD), "day"),
@@ -120,41 +111,105 @@ ggplot(cits_by_TOD,
   ylim(0, 1500) +
   facet_wrap(~ Weekday,
              ncol = 2,
-            scales = "free") +
+             scales = "free") +
   scale_x_datetime(breaks = date_breaks("1 hour"),
                    limits = x_lims,
                    labels = date_format("%H:%M", tz = "America/Los_Angeles"),
                    expand = c(0, 0))
 ```
+
+# Average Cits by Time of Day and Weekday
 
 ```{r}
 avg_cits_by_TOD <- clean_data %>%
   filter(!is.na(Issue_DT)) %>%
-  group_by(TOD, Weekday) %>%
-  summarise(Total_Cits = n()) %>%
-  group_by(TOD) %>%
-  mutate(Avg_Cits = mean(Total_Cits))
+  select(TOD, Time, Date, Weekday) %>%
+  group_by(Date, Time, Weekday) %>%
+  mutate(Total_Cits = n()) %>%
+  group_by(Time, Weekday) %>%
+  mutate(Mean_Cits = mean(Total_Cits)) %>%
+  select(TOD, Time, Weekday, Mean_Cits)
 ```
 
 ```{r}
-ggplot(avg_cits_by_TOD,
-       aes(x = TOD, y = Avg_Cits)) +
-  geom_line(color = "red",
-            size = 0.2) + 
+x_lims <- c(floor_date(min(avg_cits_by_TOD$TOD), "day"),
+            ceiling_date(max(avg_cits_by_TOD$TOD), "day"))
+ggplot(avg_cits_by_TOD, aes(x = TOD, y = Mean_Cits)) +
+  geom_line(color = "red", size = 0.2) + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "bottom") + 
-  labs(x = 'Citation Time (Military Time)',
-       y = "Number of Citations",
-       title = "Average Citations By Time By Day for 2018") + 
-  scale_x_datetime(breaks = date_breaks("1 hour"),
-                   limits = x_lims,
+        plot.title = element_text(hjust = 0.5), legend.position = "bottom") + 
+  labs(x = 'Citation Time (Military Time)', y = "Average # of Citations",
+       title = "Average Number of Citations By Weekday and Time for 2018") + 
+  ylim(0, 30) +
+  facet_wrap(~ Weekday, ncol = 2, scales = "free") +
+  scale_x_datetime(breaks = date_breaks("1 hour"), limits = x_lims,
                    labels = date_format("%H:%M", tz = "America/Los_Angeles"),
                    expand = c(0, 0))
 ```
 
-Keep in mind that Saturday and Sunday are driving down the averages, but we 
-still see a trend nonetheless.
+# Violation Descriptions by Hour
+
+```{r}
+# Arbitrarily looked only at the top 7 since otherwise the graphic gets too
+# hard to read.
+top_violations <- clean_data %>%
+  filter(!is.na(Issue_DT) & !(Violation_Description == "")) %>%
+  group_by(Violation_Description) %>%
+  summarise(Total_Cits = n()) %>%
+  arrange(desc(Total_Cits)) %>%
+  top_n(7, Total_Cits) %>%
+  .$Violation_Description
+
+cits_type_by_hr <- clean_data %>%
+  filter(!is.na(Issue_DT) & (Violation_Description %in% top_violations)) %>%
+  group_by(Hour, Violation_Description) %>%
+  summarise(Total_Cits = n())
+
+ggplot(cits_type_by_hr, aes(x = Hour, y = Total_Cits,
+                            fill = Violation_Description)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(hjust = 0.5),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = paste("Share of Total Citations Violation Descriptions By",
+                     "Hour for 2018", ""),
+       x = "Hour of the Day (Military Time)", y = "Total # of Citations",
+       fill = "Type of Violation")
+```
+
+# Violation Descriptions by Car
+
+```{r}
+top_cars <- clean_data %>%
+  filter(!(Violation_Description == "")) %>%
+  group_by(Make) %>%
+  summarise(Total_Cits = n()) %>%
+  arrange(desc(Total_Cits)) %>%
+  top_n(8, Total_Cits) %>%
+  .$Make
+
+cits_type_by_car <- clean_data %>%
+  filter(!(Violation_Description == "") & (Make %in% top_cars) &
+           (Violation_Description %in% top_violations)) %>%
+  group_by(Make, Violation_Description) %>%
+  summarise(Total_Cits = n())
+
+cits_type_by_car$Make <- factor(cits_type_by_car$Make, 
+                                levels = c("HYUN", "MERZ", "BMW", "CHEV",
+                                           "NISS", "FORD", "HOND", "TOYT"))
+# To remove x-axis scientific notation on the plot.
+options(scipen = 10000)
+ggplot(cits_type_by_car, aes(x = Make, y = Total_Cits,
+       fill = Violation_Description)) + 
+  geom_bar(stat = "identity") +
+  coord_flip() + 
+  theme(axis.text.x = element_text(hjust = 0.5),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Most Common Type of Violation By Make for 2018",
+       x = "Car Make", y = "Total # of Citations", fill = "Type of Violation")
+
+# Could test difference in numbers to see if correlation between them, but from
+# inspection it looks like no.
+```
 
 # Lets Look at Some Heatmaps!
 
@@ -176,17 +231,11 @@ la <- get_map(location = "los angeles", zoom = 10)
 
 ggmap(la) + 
   coord_cartesian() + 
-  geom_hex(data = coord_data,
-           aes(x = New_Longitude, y = New_Latitude), 
-           alpha = 0.5,
-           color = "black",
-           show.legend = TRUE,
-           stat = "binhex") +
+  geom_hex(data = coord_data, aes(x = New_Longitude, y = New_Latitude),
+           alpha = 0.5, color = "black", show.legend = TRUE, stat = "binhex") +
   scale_fill_gradientn(colours = c("blue","red")) +
   labs(title = str_c('Heatmap of Parking Citations across LA for 2018'),
-       x = "Longitude",
-       y = "Latitude",
-       fill = str_c('# of', '\nCitations')) +
+       x = "Longitude", y = "Latitude", fill = str_c('# of', '\nCitations')) +
   theme(text = element_text(color = "#444444"),
         plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
 ```
@@ -233,63 +282,85 @@ make_map(vn_coords, vn, "New_Latitude", "New_Longitude",
          "Heatmap of 2018 Venice Parking Citations")
 ```
 
-# Highest Average Fines by Area
+# Most Dangerous Meters and Their Locations
 
-```{r}
+```{r, eval = FALSE}
+# Some meters have incorrect latitude and longitude coordinates given. Choose
+# median of the coordinates for lat and lon to give an approximate location of
+# the meter, assuming that there are not many incorrect coordinates given.
+tot_meter_cits <- clean_data %>%
+  filter(!(Meter_Id == "") & !(Time_Limit == "")) %>%
+  select(Meter_Id, New_Latitude, New_Longitude, Time_Limit) %>%
+  group_by(Meter_Id) %>%
+  mutate(Total_Cits = n()) %>%
+  group_by(Meter_Id) %>%
+  mutate(Approx_Lat = median(New_Latitude),
+         Approx_Lon = median(New_Longitude)) %>%
+  distinct(Meter_Id, Time_Limit, Total_Cits, Approx_Lat, Approx_Lon) %>%
+  arrange(desc(Total_Cits))
+
+top_outliers <- quantile(tot_meter_cits$Total_Cits, .95)
+
+ggplot(data = tot_meter_cits, aes(Total_Cits)) +
+  geom_bar(fill = "red") +
+  labs(title = "# of Meters with a Given Amount of Total Citations in 2018",
+       x = "# of Total Citations of the Meter", y = "Total # of Meters") +
+  theme(text = element_text(color = "#444444"),
+        plot.title = element_text(size = 16, face = 'bold', hjust = 0.5)) +
+  geom_vline(xintercept = median(tot_meter_cits$Total_Cits), color = "black") +
+  geom_text(aes(x = median(tot_meter_cits$Total_Cits) + 8, y = 1800,
+                label = paste("Median of",
+                              round(median(tot_meter_cits$Total_Cits), 2), "")),
+            colour = "black") +  
+  geom_vline(xintercept = top_outliers, color = "blue") +
+  geom_text(aes(x = top_outliers + 12, y = 1800,
+                label = paste(unname(top_outliers), "(95th Percentile)", "")),
+            colour = "blue")
+
+# Look at only the top 5% of meters, which are obviously outliers among all
+# the meters.
+worst_meters <- tot_meter_cits %>%
+  filter(Total_Cits >= unname(quantile(tot_meter_cits$Total_Cits, 0.95))
+# Reorder the legend in the plot.
+worst_meters$Time_Limit <- factor(worst_meters$Time_Limit,
+                                  levels = c("4HR", "2HR", "1HR", "30MIN",
+                                             "15MIN"))
+ggmap(la) + 
+  coord_cartesian() + 
+  geom_point(data = worst_meters, aes(x = Approx_Lon, y = Approx_Lat,
+                                      color = Time_Limit),
+             alpha = 1, size = 2)
+```
+
+# Extra Code
+
+```{r, eval = FALSE}
 #fines_area <- coord_data %>%
 #  select("Fine_Amount", "New_Latitude", "New_Longitude")  
 avg_area_fines <- coord_data %>%
   select("Fine_Amount", "New_Latitude", "New_Longitude") %>%
   group_by(New_Latitude, New_Longitude) %>%
   summarise(Avg_Fine = mean(Fine_Amount))
-```
 
-# Average Fines by Location
+highest_area_fines <- coord_data %>%
+  select("Fine_Amount", "New_Latitude", "New_Longitude") %>%
+  group_by(New_Latitude, New_Longitude) %>%
+  summarise(Max_Fine = max(Fine_Amount))
 
-```{r}
 ggmap(la) %+% avg_area_fines +
   aes(x = New_Longitude, y = New_Latitude, z = Avg_Fine) + 
   stat_summary_2d(fun = mean, binwidth = c(.01, .01), alpha = 0.5) + 
   scale_fill_viridis(option = 'inferno') +
   labs(x = "Longitude", y = "Latitude") + 
   coord_map()
-```
 
-# Average Fine Depending on Car Summary Statistics
-
-```{r}
 make_avg_fines <- clean_data %>%
   group_by(Make) %>%
-  summarise(Avg_Make_Fine = mean(Fine_Amount, na.rm = TRUE)) %>%
+  summarise(Count = n(), Avg_Make_Fine = mean(Fine_Amount, na.rm = TRUE)) %>%
   # Some citations did not include vehicle make, so removed now.
   filter(!(Make == "")) %>%
   arrange(desc(Avg_Make_Fine))
-```
 
-## Violation Code / Description Discussion
-
-```{r}
-length(unique(clean_data$Violation_Code))
-length(unique(clean_data$Violation_Description))
-```
-
-We can see that there are fewer Violation Codes than Violation Descriptions,
-indicating that different Violation Descriptions are being classified with the
-same code. However, when inspecting the data, it appears there are many
-different spellings for an individual Violation Description.
-
-## Most Common Citation Descriptions by Make
-
-```{r}
-make_com_cits <- clean_data %>%
-  group_by(Make) %>%
-  summarise(Make_Cit_Type = names(which.max(table(Violation_Description))))
-```
-
-
-# Extra Code
-
-```{r}
 #ggmap(la) +
 #  stat_density2d(data = cit_coords, aes(x = New_Longitude, y = New_Latitude,
 #                                        fill = ..level.., alpha = ..level..),
@@ -451,4 +522,69 @@ make_com_cits <- clean_data %>%
 #  filter(New_Latitude >= ucla_lat_lims[1] & New_Latitude <= ucla_lat_lims[2] &
 #         New_Longitude >= ucla_long_lims[1] &
 #         New_Longitude <= ucla_long_lims[2])
+
+avg_cits_by_TOD <- clean_data %>%
+  filter(!is.na(Issue_DT)) %>%
+  group_by(TOD, Weekday) %>%
+  summarise(Total_Cits = n()) %>%
+  group_by(TOD) %>%
+  mutate(Avg_Cits = mean(Total_Cits))
+
+ggplot(avg_cits_by_TOD,
+       aes(x = TOD, y = Avg_Cits)) +
+  geom_line(color = "red",
+            size = 0.2) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom") + 
+  labs(x = 'Citation Time (Military Time)',
+       y = "Number of Citations",
+       title = "Average Citations By Time By Day for 2018") + 
+  scale_x_datetime(breaks = date_breaks("1 hour"),
+                   limits = x_lims,
+                   labels = date_format("%H:%M", tz = "America/Los_Angeles"),
+                   expand = c(0, 0))
+
+#x_lims <- c(floor_date(min(cits_type_by_TOD$TOD), "day"),
+#            ceiling_date(max(cits_type_by_TOD$TOD), "day"))
+ggplot(cits_type_by_TOD,
+       aes(x = TOD, y = Total_Cits, colour = Weekday)) +
+  geom_point(#color = "red",
+            size = 0.1) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom") + 
+  labs(x = 'Citation Time (Military Time)',
+       y = "# of Citations",
+       title = "Total Citations By Weekday and Time for 2018") + 
+  #ylim(0, 100) +
+  facet_wrap(~ Violation_Description,
+             ncol = 3,
+             scales = "free") +
+  scale_x_datetime(breaks = date_breaks("1 hour"),
+                   limits = x_lims,
+                   labels = date_format("%H:%M", tz = "America/Los_Angeles"),
+                   expand = c(0, 0))
+
+meter_cits <- clean_data %>%
+  filter(!(Meter_Id == "") & !is.na(Time_Limit) & !(Time_Limit == ""))
+
+a <- meter_cits %>%
+  group_by(Make) %>%
+  summarise(Total_Meter_Cits = n()) %>%
+  filter(!(Make == "")) %>%
+  mutate(Percent_Of_Meter_Cits = (round(Total_Meter_Cits / sum(Total_Meter_Cits) * 100, 2))) %>%
+  arrange(desc(Percent_Of_Meter_Cits))
+
+b <- clean_data %>%
+  group_by(Make) %>%
+  summarise(Total_Cits = n()) %>%
+  filter(!(Make == "")) %>%
+  mutate(Percent_Of_All_Cits = (round(Total_Cits / sum(Total_Cits) * 100, 2))) %>%
+  arrange(desc(Percent_Of_All_Cits))
+
+c <- a %>%
+  left_join(b, by = "Make")
+
+cor(c$Percent_Of_Meter_Cits, c$Percent_Of_All_Cits)
 ```
