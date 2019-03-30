@@ -25,11 +25,15 @@ rm(x)
 raw_data <- fread("Raw Citations Data.csv", sep = ",")
 # Remove non-useful columns (for this particular project analysis).
 clean_data <- raw_data %>%
-  select("Issue Date", "Issue time", "Make", "Location", "Violation code",
-         "Violation Description", "Fine amount", "Latitude", "Longitude") %>%
+  select("Issue Date", "Issue time", "Marked Time", "Meter Id", "Make",
+         "Location", "Violation code", "Violation Description", "Fine amount",
+         "Latitude", "Longitude") %>%
   rename(Issue_Date = `Issue Date`, Issue_Time = `Issue time`,
-         Violation_Code = `Violation code`, Fine_Amount = `Fine amount`,
-         Violation_Description = `Violation Description`)
+         Marked_Time = `Marked Time`, Meter_Id = `Meter Id`,
+         Violation_Code = `Violation code`, 
+         Violation_Description = `Violation Description`,
+         Fine_Amount = `Fine amount`)
+meter_data <- fread("Parking Meter Inventory.csv", sep = ",")
 ```
 
 # Assumptions Going Forward
@@ -38,6 +42,20 @@ clean_data <- raw_data %>%
 # Tickets are unique, no duplicates. Assume for simplicity that this means 
 # that no vehicle was cited more than once in a given instance. 
 length(unique(clean_data$`Ticket number`)) == nrow(clean_data)
+```
+
+We can see that there are fewer Violation Codes than Violation Descriptions,
+indicating that different Violation Descriptions are being classified with the
+same code. However, when inspecting the data, it appears there are many
+different spellings for an individual Violation Description.
+
+# Parking Meter Data Cleaning
+
+```{r}
+clean_meters <- meter_data %>%
+  select(SpaceID, MeteredTimeLimit, ParkingPolicy, StreetCleaning) %>%
+  rename(Meter_Id = SpaceID, Time_Limit = MeteredTimeLimit,
+         Op_Hours = ParkingPolicy, Cleaning_Times = StreetCleaning)
 ```
 
 # Issue Date Cleaning
@@ -90,6 +108,12 @@ clean_data <- clean_data %>%
 clean_data$Month <- lubridate::month(clean_data$Issue_DT, label = TRUE)
 clean_data$Date <- as.Date(clean_data$Issue_DT, tz = "America/Los_Angeles")
 clean_data$Weekday <- weekdays(clean_data$Issue_DT)
+# Reorder future plots.
+clean_data$Weekday <- factor(clean_data$Weekday,
+                             levels = c("Monday", "Tuesday", "Wednesday",
+                                        "Thursday", "Friday", "Saturday",
+                                        "Sunday"))
+clean_data$Time <- format(clean_data$TOD, "%H:%M:%S")
 # Need to standardize the date to one day to be able to plot citations by time
 # of day.
 clean_data$TOD <- strftime(clean_data$Issue_DT, format = "%H:%M:%S",
@@ -120,16 +144,33 @@ clean_data <- clean_data %>%
   select(-Latitude, - Longitude)
 ```
 
+# Merge Data 
+
+```{r}
+# The Meter Id data was not uniformly stored between the two datasets. It was
+# stored as a Space Id in the Parking Meter data, and a Meter Id in the Citations
+# Data. Normally, the Parking Meter data stored the meter as 2 alphabet letters
+# followed by the meter number (for example, WW240). However, in the Citations
+# Data many meters were stored without the letters, and thus could not be
+# matched accurately. Potentially we could estimate a meter match to a citation
+# based on the latitude and longitude data, but upon cursory inspection it
+# apperas that the coordinates for the citation do not match the coordinates
+# for the meter.
+all_data <- clean_data %>%
+  left_join(clean_meters, by = c("Meter_Id"))
+```
+
 # Write Excel Spreadsheets
 
 ```{r}
 # For date-time columns, will be converted with write.csv, which saves as a
 # character for easier conversion back.
-fwrite(clean_data, "Cleaned Data.csv", dateTimeAs = "write.csv")
+fwrite(all_data, "Cleaned Data.csv", dateTimeAs = "write.csv")
 ```
 
 # Remove Unecessary Objects
 
 ```{r}
-rm(raw_data, projections, proj4string, new_coords)
+rm(raw_data, projections, proj4string, new_coords, meter_data, clean_data,
+   clean_meters)
 ```
