@@ -25,12 +25,11 @@ rm(x)
 raw_data <- fread("Raw Citations Data.csv", sep = ",")
 # Remove non-useful columns (for this particular project analysis).
 clean_data <- raw_data %>%
-  select("Issue Date", "Issue time", "Marked Time", "Meter Id", "Make",
-         "Location", "Violation code", "Violation Description", "Fine amount",
-         "Latitude", "Longitude") %>%
+  select("Issue Date", "Issue time", "Meter Id", "Make", "Location", 
+         "Violation code", "Violation Description", "Fine amount", "Latitude",
+         "Longitude") %>%
   rename(Issue_Date = `Issue Date`, Issue_Time = `Issue time`,
-         Marked_Time = `Marked Time`, Meter_Id = `Meter Id`,
-         Violation_Code = `Violation code`, 
+         Meter_Id = `Meter Id`, Violation_Code = `Violation code`, 
          Violation_Description = `Violation Description`,
          Fine_Amount = `Fine amount`)
 meter_data <- fread("Parking Meter Inventory.csv", sep = ",")
@@ -42,6 +41,9 @@ meter_data <- fread("Parking Meter Inventory.csv", sep = ",")
 # Tickets are unique, no duplicates. Assume for simplicity that this means 
 # that no vehicle was cited more than once in a given instance. 
 length(unique(clean_data$`Ticket number`)) == nrow(clean_data)
+# However, when inspecting the data manually, we can find cases where the same
+# car receives two unique tickets nearly simultaneously (minutes apart). Thus
+# we cannot assume that each ticket is for a unique car.
 ```
 
 We can see that there are fewer Violation Codes than Violation Descriptions,
@@ -67,11 +69,8 @@ clean_data$Issue_Date <- gsub('T00:00:00', "", clean_data$Issue_Date)
 # Only will look at 2018 for this analysis. The following method is faster than
 # subsetting and using format.
 clean_data$Year <- year(ymd(clean_data$Issue_Date))
-#clean_data <- subset(clean_data, Year == 2018) %>%
-#  select(., select = -Year)
 clean_data <- clean_data %>%
   filter(Year == 2018) %>%
-  #select(., select = -Year)
   select(-Year)
 ```
 
@@ -93,7 +92,7 @@ clean_data$Issue_Time <- as.character(clean_data$Issue_Time) %>%
 clean_data$Issue_DT <- apply(clean_data[, c('Issue_Date','Issue_Time')], 1,
                              paste, collapse = " ") %>%
 # Some values in the raw data were missing Issue Time (NA), so were quieted to
-# not show in output.
+# not show in code output.
   ymd_hm(., quiet = TRUE)
 # Change timezone from UTC.
 tz(clean_data$Issue_DT) <- 'America/Los_Angeles'
@@ -105,20 +104,18 @@ clean_data <- clean_data %>%
 # Tickets by Month and Day, Day of the Week, and Time of Day
 
 ```{r}
-clean_data$Month <- lubridate::month(clean_data$Issue_DT, label = TRUE)
 clean_data$Date <- as.Date(clean_data$Issue_DT, tz = "America/Los_Angeles")
+clean_data$Month <- lubridate::month(clean_data$Issue_DT, label = TRUE)
+clean_data$Day <- day(clean_data$Date) %>%
+  factor(.)
 clean_data$Weekday <- weekdays(clean_data$Issue_DT)
-# Reorder future plots.
-clean_data$Weekday <- factor(clean_data$Weekday,
-                             levels = c("Monday", "Tuesday", "Wednesday",
-                                        "Thursday", "Friday", "Saturday",
-                                        "Sunday"))
-clean_data$Time <- format(clean_data$TOD, "%H:%M:%S")
 # Need to standardize the date to one day to be able to plot citations by time
 # of day.
 clean_data$TOD <- strftime(clean_data$Issue_DT, format = "%H:%M:%S",
                            tz = "America/Los_Angeles") %>%
   as.POSIXct(., format = "%H:%M:%S")
+clean_data$Time <- format(clean_data$TOD, "%H:%M:%S")
+clean_data$Hour <- format(clean_data$TOD, "%H")
 ```
 
 # Latitude and Longitude Coordinate Cleaning
@@ -148,16 +145,126 @@ clean_data <- clean_data %>%
 
 ```{r}
 # The Meter Id data was not uniformly stored between the two datasets. It was
-# stored as a Space Id in the Parking Meter data, and a Meter Id in the Citations
-# Data. Normally, the Parking Meter data stored the meter as 2 alphabet letters
-# followed by the meter number (for example, WW240). However, in the Citations
-# Data many meters were stored without the letters, and thus could not be
-# matched accurately. Potentially we could estimate a meter match to a citation
-# based on the latitude and longitude data, but upon cursory inspection it
-# apperas that the coordinates for the citation do not match the coordinates
-# for the meter.
+# stored as a Space Id in the Parking Meter data, and a Meter Id in the
+# Citations Data. Normally, the Parking Meter data stored the meter as 2
+# alphabet letters followed by the meter number (for example, WW240). However,
+# in the Citations Data many meters were stored without the letters, and thus
+# could not be matched accurately. Potentially we could estimate a meter match
+# to a citation based on the latitude and longitude data, but upon cursory
+# inspection it appears that the coordinates for the citation do not match
+# the coordinates for the meter.
 all_data <- clean_data %>%
   left_join(clean_meters, by = c("Meter_Id"))
+```
+
+# Tickets by Month
+
+```{r}
+tot_cits_month <- all_data %>%
+  # Removed some entires that were missing an issue date, since they were 
+  # missing an issue date and time for the citation.
+  filter(!is.na(Issue_DT)) %>%
+  group_by(Month) %>%
+  summarise(Total_Month_Cits = n())
+```
+
+# Tickets for 2 Chosen Months
+
+```{r}
+# Chose September and April since same number of days in the month yet April
+# has far higher citation numbers for 2018.
+cutoffs_1 <- c(as.Date("2018-04-01"), as.Date("2018-04-30"))
+cutoffs_2 <- c(as.Date("2018-09-01"), as.Date("2018-09-30"))
+april_cits <- all_data %>%
+  filter(!is.na(Issue_DT)) %>%
+  group_by(Date) %>%
+  summarise(Tot_Day_Cits = n()) %>%
+  mutate(Day = day(Date)) %>%
+  filter(Date >= cutoffs_1[1] & Date <= cutoffs_1[2])
+sept_cits <- all_data %>%
+  filter(!is.na(Issue_DT)) %>%
+  group_by(Date) %>%
+  summarise(Tot_Day_Cits = n()) %>%
+  mutate(Day = day(Date)) %>%
+  filter(Date >= cutoffs_2[1] & Date <= cutoffs_2[2])
+```
+
+# Average Citations by Time of Day and Weekday
+
+```{r}
+avg_cits_by_TOD <- all_data %>%
+  filter(!is.na(Issue_DT)) %>%
+  select(TOD, Time, Date, Weekday) %>%
+  group_by(Date, Time, Weekday) %>%
+  mutate(Total_Cits = n()) %>%
+  group_by(Time, Weekday) %>%
+  mutate(Mean_Cits = mean(Total_Cits)) %>%
+  select(TOD, Time, Weekday, Mean_Cits)
+```
+
+# Violation Descriptions by Hour
+
+```{r}
+# Arbitrarily only look at the top 7 violation descriptions so that graph won't
+# be too cluttered.
+top_violations <- all_data %>%
+  filter(!is.na(Issue_DT) & !(Violation_Description == "")) %>%
+  group_by(Violation_Description) %>%
+  summarise(Total_Cits = n()) %>%
+  arrange(desc(Total_Cits)) %>%
+  top_n(7, Total_Cits) %>%
+  .$Violation_Description
+# Hours will show up in military format (00 for midnight, 12 for noon).
+cits_type_by_hr <- all_data %>%
+  filter(!is.na(Issue_DT) & (Violation_Description %in% top_violations)) %>%
+  group_by(Hour, Violation_Description) %>%
+  summarise(Total_Cits = n())
+```
+
+# Violation Descriptions by Car
+
+```{r}
+# Arbitrarily only look at the top 8 car makes so that graph won't be too
+# cluttered.
+top_cars <- all_data %>%
+  filter(!(Violation_Description == "")) %>%
+  group_by(Make) %>%
+  summarise(Total_Cits = n()) %>%
+  arrange(desc(Total_Cits)) %>%
+  top_n(8, Total_Cits) %>%
+  .$Make
+
+cits_type_by_car <- all_data %>%
+  filter(!(Violation_Description == "") & (Make %in% top_cars) &
+           (Violation_Description %in% top_violations)) %>%
+  group_by(Make, Violation_Description) %>%
+  summarise(Total_Cits = n())
+```
+
+# Coordinate Data
+
+```{r}
+# 11% of the 2018 data was missing Latitude and Longitude data (the values
+# were stored as 99999). These values were also transformed in the new
+# coordinate system. Removed these values for the mapping data.
+coord_data <- all_data %>%
+  filter(New_Latitude >= 30 & New_Longitude >= -125) %>%
+  select(New_Latitude, New_Longitude)
+```
+
+# Total Citations by Meter
+
+```{r}
+tot_meter_cits <- all_data %>%
+  filter(!(Meter_Id == "") & !(Time_Limit == "")) %>%
+  select(Meter_Id, New_Latitude, New_Longitude, Time_Limit) %>%
+  group_by(Meter_Id) %>%
+  mutate(Total_Cits = n(), Approx_Lat = median(New_Latitude),
+         Approx_Lon = median(New_Longitude)) %>%
+  # Some latitudes or longitudes were entered incorrectly sometimes for a
+  # meter. Used median to approximate the location of the meter.
+  distinct(Meter_Id, Time_Limit, Total_Cits, Approx_Lat, Approx_Lon) %>%
+  arrange(desc(Total_Cits))
 ```
 
 # Write Excel Spreadsheets
@@ -165,12 +272,19 @@ all_data <- clean_data %>%
 ```{r}
 # For date-time columns, will be converted with write.csv, which saves as a
 # character for easier conversion back.
-fwrite(all_data, "Cleaned Data.csv", dateTimeAs = "write.csv")
+fwrite(coord_data, "Citation Coordinates")
+fwrite(tot_cits_month, "Total Citations By Month")
+fwrite(april_cits, "April 2018 Cits.csv", dateTimeAs = "write.csv")
+fwrite(sept_cits, "September 2018 Cits.csv", dateTimeAs = "write.csv")
+fwrite(avg_cits_by_TOD, "Average Citations by TOD", dateTimeAs = "write.csv")
+fwrite(cits_type_by_hr, "Violation Descriptions by TOD", dateTimeAs = "write.csv")
+fwrite(cits_type_by_car, "Violation Descriptions by Car Make",
+       dateTimeAs = "write.csv")
+fwrite(tot_meter_cits, "Evil Meter Locations and Citations")
 ```
 
-# Remove Unecessary Objects
+# Clear Workspace
 
 ```{r}
-rm(raw_data, projections, proj4string, new_coords, meter_data, clean_data,
-   clean_meters)
+rm(list = ls())
 ```
