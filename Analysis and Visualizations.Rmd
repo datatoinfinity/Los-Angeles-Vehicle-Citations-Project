@@ -2,7 +2,7 @@
 title: "Analysis and Visualizations"
 author: "Brandon Thoma"
 date: "March 22, 2019"
-output: html_document
+output: rmarkdown::github_document
 ---
 
 # Motivation for This Project
