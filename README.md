@@ -1,6 +1,6 @@
 # Los-Angeles-Vehicle-Citations-Project
 
-# For the Final Analysis and Visualizations, please see the appropriate file named "Analysis and Visualizations.html".
+# For the Final Analysis and Visualizations, please see the appropriate file named "Analysis and Visualizations.Md".
 
 # For Data Cleaning, please see the file "Data Cleaning.Rmd".
 
