@@ -182,7 +182,7 @@ make_map <- function(coord_data, loc_map, lat_col_name, long_col_name,
                    alpha = .4) +
     scale_fill_viridis(option = 'inferno') +
     labs(title = str_c(plot_title),
-         fill = str_c('Number of', '\nCitations'),
+         fill = "# of Citations",
          x = "Longitude",
          y = "Latitude") +
     theme(text = element_text(color = "#444444"),
