@@ -1,5 +1,5 @@
 ---
-title: "Los Angeles Vehicle Citations Project - Data Cleaning"
+title: "Data Cleaning"
 author: "Brandon Thoma"
 date: "March 22, 2019"
 output: html_document
@@ -35,21 +35,16 @@ clean_data <- raw_data %>%
 meter_data <- fread("Parking Meter Inventory.csv", sep = ",")
 ```
 
-# Assumptions Going Forward
+# Some Assumptions Going Forward
 
 ```{r}
 # Tickets are unique, no duplicates. Assume for simplicity that this means 
 # that no vehicle was cited more than once in a given instance. 
 length(unique(clean_data$`Ticket number`)) == nrow(clean_data)
-# However, when inspecting the data manually, we can find cases where the same
+# Also, when inspecting the data manually, we can find cases where the same
 # car receives two unique tickets nearly simultaneously (minutes apart). Thus
 # we cannot assume that each ticket is for a unique car.
 ```
-
-We can see that there are fewer Violation Codes than Violation Descriptions,
-indicating that different Violation Descriptions are being classified with the
-same code. However, when inspecting the data, it appears there are many
-different spellings for an individual Violation Description.
 
 # Parking Meter Data Cleaning
 
@@ -123,11 +118,11 @@ clean_data$Hour <- format(clean_data$TOD, "%H")
 ```{r}
 # The coordinates in the raw data have latitude / longitude (X/Y) in US Feet
 # coordinates according to the NAD_1983_StatePlane_California_V_FIPS_0405_Feet
-# projection. We need to change translate these coordinates into a more
-# standard format of coordinate to use for Google maps plotting.
-# The specific parameters for proj4string is found based on
+# projection. We need to translate these coordinates into a more standard
+# format of coordinate (WGS 84 Web Mercator I believe) to use for Google maps
+#  plotting. The specific parametersfor proj4string is found based on
 # https://epsg.io/transform#s_srs=102645&t_srs=4326 and
-# https://epsg.io/transform#s_srs=102645&t_srs=4326 pages.
+# https://epsg.io/102645 pages.
 proj4string <- paste('+proj=lcc +lat_1=34.03333333333333',
                      ' +lat_2=35.46666666666667 +lat_0=33.5 +lon_0=-118 ',
                      '+x_0=2000000 +y_0=500000.0000000002 +ellps=GRS80 ',
@@ -277,7 +272,8 @@ fwrite(tot_cits_month, "Total Citations By Month")
 fwrite(april_cits, "April 2018 Cits.csv", dateTimeAs = "write.csv")
 fwrite(sept_cits, "September 2018 Cits.csv", dateTimeAs = "write.csv")
 fwrite(avg_cits_by_TOD, "Average Citations by TOD", dateTimeAs = "write.csv")
-fwrite(cits_type_by_hr, "Violation Descriptions by TOD", dateTimeAs = "write.csv")
+fwrite(cits_type_by_hr, "Violation Descriptions by TOD",
+       dateTimeAs = "write.csv")
 fwrite(cits_type_by_car, "Violation Descriptions by Car Make",
        dateTimeAs = "write.csv")
 fwrite(tot_meter_cits, "Evil Meter Locations and Citations")
