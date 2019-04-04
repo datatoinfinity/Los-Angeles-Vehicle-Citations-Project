@@ -16,10 +16,10 @@ They asked for my help (with my budding data science skills) to help them avoid 
 Some questions that they had:
 
 1.  When do the citations generally happen?
-2.  Where do the citations often occur?
-3.  What are the reasons for the citations?
-4.  What kinds of meters, if any, should they avoid?
-5.  Are there any cars that are particularly susceptible?
+2.  What are the reasons for the citations?
+3.  Are there any cars that are particularly susceptible?
+4.  Where do the citations often occur?
+5.  What kinds of meters, if any, should they avoid?
 
 This analysis will attempt to answer these questions, focusing on 2018 for the analysis.
 
@@ -422,7 +422,13 @@ If you are ever in Los Angeles, make sure to not run in with these meters, or yo
 Conclusion
 ----------
 
-The next time you are in Los Angeles, try to avoid Downtown, Hollywood, West Hollywood, UCLA / Westwood, and Venice Beach between 8am and 1pm, and ideally visit only during the beginning half of the year and on the weekend. Don't worry about your car make, it likely won't affect your chance of being cited. And whatever you do, avoid Meter GA22 and GA22A in Glendale!
+The next time you are in Los Angeles, use these tips to avoid parking citations:
+
+1.  Try to avoid Downtown, Hollywood, West Hollywood, UCLA / Westwood, and Venice Beach during 8am-5pm on weekdays.
+2.  Ideally only visit Los Angeles during the first half of the year.
+3.  Most tickets are related to street sweeping and meter expiration. Remember to be careful if parking overnight or putting money in your meter!
+4.  Don't worry about your car being at a greater risk of being cited than other common car makes.
+5.  Avoid meters in Downtown if possible, and avoid the worst meters in Glendale!
 
 Thanks for reading!
 
