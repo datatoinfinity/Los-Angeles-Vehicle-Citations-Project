@@ -1,11 +1,11 @@
 ---
 title: "Analysis and Visualizations"
-author: "Brandon Thoma"
-date: "March 22, 2019"
+author: ""
+date: "Project Beginning March 22, 2019"
 output: rmarkdown::github_document
 ---
 
-# Motivation for This Project
+## Motivation for This Project
 
 Los Angeles depends on citation revenue to power its police department,
 and raked in $140.4 million dollars from parking citations last year!
@@ -31,7 +31,7 @@ Some questions that they had:
 This analysis will attempt to answer these questions, focusing on 2018 for the 
 analysis.
 
-# The Data and Assumptions
+## The Data and Assumptions
 
 The data, hosted on Kaggle, is open-sourced and provided by the City of Los
 Angeles through their Kaggle organization page at
@@ -55,7 +55,7 @@ Finally, I was able to find additional data about meter locations, time limits,
 and other data from https://data.lacity.org/A-Livable-and-Sustainable-City/Parking-Meter-Inventory/s49e-q6j2/data.
 This data was included throughout this analysis.
 
-# Global Options and Libraries
+## Global Options and Libraries
 
 ```{r, warning = FALSE, message = FALSE, cache = TRUE}
 knitr::opts_chunk$set(fig.align = "center") 
@@ -70,7 +70,7 @@ source("Custom Created Functions.R")
 rm(x)
 ```
 
-# Importing the Data
+## Importing the Data
 
 Please note, data cleaning took place in Data Cleaning.Rmd. If you would like
 to see this, please go here:
@@ -88,7 +88,7 @@ cits_type_by_car <- fread("Violation Descriptions by Car Make", sep = ",")
 worst_meters <- fread("Evil Meter Locations and Citations", sep = ",")
 ```
 
-# Fix Some  Data Columns (Factors and Date Times) for Plotting
+## Fix Columns (Factors and Date Times) for Plotting
 
 Some of the data from the .csv files had to be converted to factors (since in
 string format and I wanted a specific axis order in later plots). Other
@@ -128,7 +128,7 @@ sept_cits$Day <- factor(sept_cits$Day)
 sept_cits$Date <- ymd(april_cits$Date)
 ```
 
-# Tickets by Month for 2018
+## Tickets by Month for 2018
 
 ```{r, warning = FALSE, message = FALSE, cache = TRUE}
 graph_cits(tot_cits_month, "Total Citations by Month for 2018", "Month",
@@ -177,7 +177,7 @@ that there are quite a few limitations with this result:
 3. This Multiple Linear Regression model is one of many potential models,
    albeit it the simplest to implement and read.
       
-# Daily Citation Totals for April 2018 and September 2018
+## Daily Citation Totals for April 2018 and September 2018
 
 I chose these months since they have similar numbers of days, though September
 did have a holiday. That will likely impact citation totals on the holidays.
@@ -199,7 +199,7 @@ of September 7 and 14, both Fridays, saw decreased citation counts. Likely,
 the holiday and these 2 unusual days were major influences in why September
 had ~47,400 citations fewer than April.
 
-# Average Cits by Time of Day and Weekday for 2018
+## Average Cits by Time of Day and Weekday for 2018
 
 ```{r, warning = FALSE, cache = TRUE, fig.width = 8, fig.height = 8}
 # Limits so the graph begins and ends at midnight.
@@ -236,7 +236,7 @@ More surprisingly:
    the reason why there is a drop off on weekdays between 1pm and 6pm is
    perplexing.
 
-# Violation Descriptions by Hour for 2018
+## Violation Descriptions by Hour for 2018
 
 ```{r, warning = FALSE, message = FALSE, cache = TRUE}
 ggplot(cits_type_by_hr, aes(x = Hour, y = Total_Cits,
@@ -257,7 +257,7 @@ Unsurprisingly:
    of thought with the last section, as meter maids are likely making their
    rounds.
 
-# Violation Descriptions by Car Make for 2018
+## Violation Descriptions by Car Make for 2018
 
 ```{r, warning = FALSE, message = FALSE, cache = TRUE}
 # To remove x-axis scientific notation on the plot. Also could probably turn
@@ -285,7 +285,7 @@ Additionally, we could run some statistical tests to more concretely compare
 proportions of types of violations between different car makes, but the visual
 data is sufficently compelling at this point.
 
-# Heatmaps of Parking Citations for 2018
+## Heatmaps of Parking Citations for 2018
 
 ### Heatmap of All of Los Angeles
 
@@ -338,7 +338,7 @@ Google maps!
 
 ![](Worst Intersection in Los Angeles.png)
 
-While in some ways, it looks like normaly intersection, think about this:
+While in some ways, it looks like normal intersection, think about this:
 
 1. Red zones on each corner.
 2. Multiple parking signs on top of one another.
@@ -392,7 +392,7 @@ near the Venice Beach Boardwalk is likely due to many tourists or locals
 wanting to go to the boardwalk but unable to find parking nearby, thus testing
 their luck with some illegal parking!
 
-# Most Dangerous Meters and Their Locations for 2018
+## Most Dangerous Meters and Their Locations for 2018
 
 Let's first look at a plot of the number of tickets per meter to get a better
 idea of the number of meter citations for a given meter within the year:
@@ -454,7 +454,7 @@ citations result from them.
 If you are ever in Los Angeles, make sure to not run in with these meters, or
 you may be sorry!
 
-# Conclusion
+## Conclusion
 
 The next time you are in Los Angeles, try to avoid Downtown, Hollywood, West
 Hollywood, UCLA / Westwood, and Venice Beach between 8am and 1pm, and ideally

@@ -1,10 +1,9 @@
 Analysis and Visualizations
 ================
-Brandon Thoma
-March 22, 2019
+Project Beginning March 22, 2019
 
 Motivation for This Project
-===========================
+---------------------------
 
 Los Angeles depends on citation revenue to power its police department, and raked in $140.4 million dollars from parking citations last year!
 
@@ -25,7 +24,7 @@ Some questions that they had:
 This analysis will attempt to answer these questions, focusing on 2018 for the analysis.
 
 The Data and Assumptions
-========================
+------------------------
 
 The data, hosted on Kaggle, is open-sourced and provided by the City of Los Angeles through their Kaggle organization page at <https://www.kaggle.com/cityofLA>. It contains ~8.8 million parking citations from 2015 until present, including information on the time and date of the citation, latitude and longitude coordinates of the citation location, car make, and fine amount.
 
@@ -38,7 +37,7 @@ Also, there is an important factor to note about this data: while each citation 
 Finally, I was able to find additional data about meter locations, time limits, and other data from <https://data.lacity.org/A-Livable-and-Sustainable-City/Parking-Meter-Inventory/s49e-q6j2/data>. This data was included throughout this analysis.
 
 Global Options and Libraries
-============================
+----------------------------
 
 ``` r
 knitr::opts_chunk$set(fig.align = "center") 
@@ -54,7 +53,7 @@ rm(x)
 ```
 
 Importing the Data
-==================
+------------------
 
 Please note, data cleaning took place in Data Cleaning.Rmd. If you would like to see this, please go here: <https://github.com/datatoinfinity/Los-Angeles-Vehicle-Citations-Project/blob/master/Data%20Cleaning.Rmd>.
 
@@ -70,8 +69,8 @@ cits_type_by_car <- fread("Violation Descriptions by Car Make", sep = ",")
 worst_meters <- fread("Evil Meter Locations and Citations", sep = ",")
 ```
 
-Fix Some Data Columns (Factors and Date Times) for Plotting
-===========================================================
+Fix Columns (Factors and Date Times) for Plotting
+-------------------------------------------------
 
 Some of the data from the .csv files had to be converted to factors (since in string format and I wanted a specific axis order in later plots). Other data needed to be converted back into date-times and have new date variables created.
 
@@ -109,14 +108,14 @@ sept_cits$Date <- ymd(april_cits$Date)
 ```
 
 Tickets by Month for 2018
-=========================
+-------------------------
 
 ``` r
 graph_cits(tot_cits_month, "Total Citations by Month for 2018", "Month",
            "Total_Month_Cits", "Month", "# of Citations")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-4-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-4-1.png)
 
 Somewhat surprising is the decreasing trend in total parking citations by month as the year progressed. A few scenarios immediately come to mind:
 
@@ -166,7 +165,7 @@ From the model, we see that ~16% of the total variation in the number of citatio
 3.  This Multiple Linear Regression model is one of many potential models, albeit it the simplest to implement and read.
 
 Daily Citation Totals for April 2018 and September 2018
-=======================================================
+-------------------------------------------------------
 
 I chose these months since they have similar numbers of days, though September did have a holiday. That will likely impact citation totals on the holidays. Please keep that in mind.
 
@@ -175,19 +174,19 @@ graph_cits(april_cits, "Total Citations by Day for April 2018", "Day",
            "Tot_Day_Cits", "Day", "# of Citations")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-6-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-6-1.png)
 
 ``` r
 graph_cits(sept_cits, "Total Citations by Day for September 2018", "Day",
            "Tot_Day_Cits", "Day", "# of Citations")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-7-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-7-1.png)
 
 September 2 was Labor Day, which seems to have affected the citations issued on that day and the day after. But there is not explanation for why the days of September 7 and 14, both Fridays, saw decreased citation counts. Likely, the holiday and these 2 unusual days were major influences in why September had ~47,400 citations fewer than April.
 
 Average Cits by Time of Day and Weekday for 2018
-================================================
+------------------------------------------------
 
 ``` r
 # Limits so the graph begins and ends at midnight.
@@ -206,7 +205,7 @@ ggplot(avg_cits_by_TOD, aes(x = TOD, y = Mean_Cits)) +
                    expand = c(0, 0))
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-8-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-8-1.png)
 
 Naturally we see that:
 
@@ -218,7 +217,7 @@ More surprisingly:
 1.  It seems that after 1pm on weekdays, there is a significant fall off in parking citations issued. Perhaps the meter maids have a daily quota that they must hit. It is understandable that after, say, 6pm, that citations would decrease as many meters and parking signs don't apply after 6pm. But the reason why there is a drop off on weekdays between 1pm and 6pm is perplexing.
 
 Violation Descriptions by Hour for 2018
-=======================================
+---------------------------------------
 
 ``` r
 ggplot(cits_type_by_hr, aes(x = Hour, y = Total_Cits,
@@ -231,7 +230,7 @@ ggplot(cits_type_by_hr, aes(x = Hour, y = Total_Cits,
        fill = " Top 7 Types of Violations")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-9-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-9-1.png)
 
 Unsurprisingly:
 
@@ -239,7 +238,7 @@ Unsurprisingly:
 2.  The spike in citations issued at 8am, 10am, and 12pm fits a similar line of thought with the last section, as meter maids are likely making their rounds.
 
 Violation Descriptions by Car Make for 2018
-===========================================
+-------------------------------------------
 
 ``` r
 # To remove x-axis scientific notation on the plot. Also could probably turn
@@ -256,14 +255,14 @@ ggplot(cits_type_by_car, aes(x = Make, y = Total_Cits,
        x = "Top 8 Car Makes", y = "# of Citations", fill = "Type of Violation")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-10-1.png)
 
 Unsurprisingly, there seems to not be a relationship between owning a certain make of car and being more susceptible to a specific kind of parking citation. Please note that these are the top car makes in the dataset, and it could be very well that very expensive cars (bentleys, rolls-royces, etc.) show some interesting results. Yet these expensive cars are respectively rare in this dataset.
 
 Additionally, we could run some statistical tests to more concretely compare proportions of types of violations between different car makes, but the visual data is sufficently compelling at this point.
 
 Heatmaps of Parking Citations for 2018
-======================================
+--------------------------------------
 
 ### Heatmap of All of Los Angeles
 
@@ -287,7 +286,7 @@ ggmap(la) +
         plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-11-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-11-1.png)
 
 Looking at this heatmap, Downtown Los Angeles appears to probably be the worst place for parking citations in all of Los Angeles! This is not unsurprising (especially if you have ever tried to park there downtown)!
 
@@ -308,13 +307,13 @@ make_map(dt_coords, dt, "New_Latitude", "New_Longitude",
          "Heatmap of Downtown LA Parking Citations for 2018")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-12-1.png)
 
 So it seems probably the worst intersection / block to park at in Los Angeles is at the corner of S Spring St and W 5th St. Let's take a closer look on Google maps!
 
 ![](Worst%20Intersection%20in%20Los%20Angeles.png)
 
-While in some ways, it looks like normaly intersection, think about this:
+While in some ways, it looks like normal intersection, think about this:
 
 1.  Red zones on each corner.
 2.  Multiple parking signs on top of one another.
@@ -334,7 +333,7 @@ make_map(ucla_coords, ucla, "New_Latitude", "New_Longitude",
          "Heatmap of Westwood Parking Citations for 2018")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-13-1.png)
 
 The major area for parking citations in Westwood is an area of Sawtelle that has many popular eateries but virtually no parking! While there are a few small parking lots and some meters, most people prefer to take their chances parking in the residential neighborhoods in the surrounding areas. Yet with long wait times at the eateries, I wouldn't be surprised if this increased the chances of being caught illegally parking by the meter maid!
 
@@ -353,12 +352,12 @@ make_map(vn_coords, vn, "New_Latitude", "New_Longitude",
          "Heatmap Venice Beach Parking Citations for 2018")
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-14-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-14-1.png)
 
 Unsurpsingly, the main areas of citations near Venice Beach are on Abbot Kinney Blvd (which has many popular restaurants, food trucks, but some of the littlest amount of parking spots that I encountered while in Los Angeles). Additionally, the high amounts of citations in the area near the Venice Beach Boardwalk is likely due to many tourists or locals wanting to go to the boardwalk but unable to find parking nearby, thus testing their luck with some illegal parking!
 
 Most Dangerous Meters and Their Locations for 2018
-==================================================
+--------------------------------------------------
 
 Let's first look at a plot of the number of tickets per meter to get a better idea of the number of meter citations for a given meter within the year:
 
@@ -380,7 +379,7 @@ ggplot(data = worst_meters, aes(Total_Cits)) +
                                 `30 (95th Percentile)` = "blue"))
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-15-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-15-1.png)
 
 So while the median meter had only 6 parking citations last year, the top 5% of meters had over 30, with some meters as high as 200! This means that many meters are likely generating thousands, if not tens of thousands, of dollars of revenue for the city each year!
 
@@ -400,7 +399,7 @@ ggmap(la) +
         plot.title = element_text(size = 16, face = 'bold', hjust = 0.5))
 ```
 
-<img src="Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png" style="display: block; margin: auto;" />
+![](Analysis_and_Visualizations_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-16-1.png)
 
 Like we expected, most of the worst meters are in Downtown Los Angeles, Hollywood, West Hollywood, Mid-Wilshire, the UCLA / Westwood area, and the Venice Beach area.
 
@@ -421,7 +420,7 @@ The 15 minute time limit at these meters is likely a major reason why so many ci
 If you are ever in Los Angeles, make sure to not run in with these meters, or you may be sorry!
 
 Conclusion
-==========
+----------
 
 The next time you are in Los Angeles, try to avoid Downtown, Hollywood, West Hollywood, UCLA / Westwood, and Venice Beach between 8am and 1pm, and ideally visit only during the beginning half of the year and on the weekend. Don't worry about your car make, it likely won't affect your chance of being cited. And whatever you do, avoid Meter GA22 and GA22A in Glendale!
 
